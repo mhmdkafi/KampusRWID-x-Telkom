@@ -1,0 +1,120 @@
+.App {
+  text-align: left;
+}
+
+/* Professional Typography */
+.display-4 {
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Professional Button Styling */
+.btn-modern {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(34, 84, 61, 0.25);
+  border: none;
+}
+
+.btn-modern:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(34, 84, 61, 0.35);
+}
+
+/* Demo Button Styling - Netral */
+.btn-demo {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(74, 85, 104, 0.15);
+}
+
+.btn-demo:hover {
+  background-color: #4a5568;
+  border-color: #4a5568;
+  color: white !important;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(74, 85, 104, 0.3);
+}
+
+/* Professional Card Styling */
+.card-modern {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  background: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.card-modern:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
+}
+
+.card-header-image {
+  transition: all 0.3s ease;
+}
+
+.card-modern:hover .card-header-image {
+  transform: scale(1.02);
+}
+
+/* Stats Card Styling */
+.stats-card {
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth transitions */
+.nav-link, .btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Professional spacing */
+.section-padding {
+  padding: 6rem 0;
+}
+
+@media (max-width: 768px) {
+  .section-padding {
+    padding: 4rem 0;
+  }
+  
+  .display-4 {
+    font-size: 2.25rem;
+  }
+}
+
+/* Minimal Color Palette */
+:root {
+  --primary-color: #22543d;
+  --primary-light: #38a169;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --border-light: #e2e8f0;
+  --bg-light: #f7fafc;
+}
+
+/* Professional badge styling */
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Button hover effects */
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Skills badge hover - Netral */
+.badge:hover {
+  background-color: #e2e8f0 !important;
+  color: #4a5568 !important;
+  cursor: pointer;
+  border-color: #22543d !important;
+}
