@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header/Header';
 import CVUpload from '../../components/cv/CVUpload';
 import CVAnalysis from '../../components/cv/CVAnalysis';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
+import AuthModal from '../../components/AuthModal/AuthModal';
 import { jobsData } from '../../data/jobData';
 import './JobMatching.css';
 
@@ -12,8 +14,58 @@ const JobMatching = () => {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [matchResults, setMatchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Authentication states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authMessage, setAuthMessage] = useState('');
+  
+  const navigate = useNavigate();
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  const openAuthModal = (message = '') => {
+    setAuthMessage(message);
+    setIsAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setIsAuthModalOpen(false);
+    setAuthMessage('');
+  };
+
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    closeAuthModal();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    setIsAuthenticated(false);
+    navigate('/');
+  };
 
   const handleCVUpload = async (file) => {
+    if (!isAuthenticated) {
+      openAuthModal('Silakan login terlebih dahulu untuk mengupload CV');
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Simulate CV processing
@@ -22,7 +74,8 @@ const JobMatching = () => {
           fileName: file.name,
           size: file.size,
           uploadDate: new Date().toISOString(),
-          type: file.type
+          type: file.type,
+          uploadedBy: user?.email || 'user'
         });
         setCurrentStep(2);
         setIsLoading(false);
@@ -58,6 +111,34 @@ const JobMatching = () => {
     setMatchResults([]);
   };
 
+  const handleViewJobDetails = (job) => {
+    console.log('View job details:', job);
+    navigate(`/job-detail/${job.id}`);
+  };
+
+  const handleSaveJob = (job) => {
+    if (!isAuthenticated) {
+      openAuthModal('Silakan login untuk menyimpan pekerjaan ke wishlist');
+      return;
+    }
+
+    // Save to wishlist logic
+    const savedJobs = JSON.parse(localStorage.getItem('wishlist') || '[]');
+    const isAlreadySaved = savedJobs.some(savedJob => savedJob.id === job.id);
+    
+    if (!isAlreadySaved) {
+      savedJobs.push(job);
+      localStorage.setItem('wishlist', JSON.stringify(savedJobs));
+      alert('Pekerjaan berhasil disimpan ke wishlist!');
+    } else {
+      alert('Pekerjaan sudah ada di wishlist Anda');
+    }
+  };
+
+  const handleViewAllJobs = () => {
+    navigate('/job-list');
+  };
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -79,6 +160,7 @@ const JobMatching = () => {
                 <div className="analysis-summary">
                   <span className="summary-item">📊 Skill Score: {analysisResults.skillScore || 85}</span>
                   <span className="summary-item">💼 Experience: {analysisResults.experience || '3+ years'}</span>
+                  {user && <span className="summary-item">👤 User: {user.name}</span>}
                 </div>
               )}
             </div>
@@ -110,11 +192,17 @@ const JobMatching = () => {
                   </div>
                   
                   <div className="job-actions">
-                    <button className="btn btn-primary btn-sm">
+                    <button 
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handleViewJobDetails(job)}
+                    >
                       View Details
                     </button>
-                    <button className="btn btn-outline-secondary btn-sm">
-                      Save Job
+                    <button 
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={() => handleSaveJob(job)}
+                    >
+                      💾 Save Job
                     </button>
                   </div>
                 </div>
@@ -125,7 +213,10 @@ const JobMatching = () => {
               <button className="btn btn-outline-primary" onClick={handleReset}>
                 🔄 Analyze Another CV
               </button>
-              <button className="btn btn-primary">
+              <button 
+                className="btn btn-primary"
+                onClick={handleViewAllJobs}
+              >
                 📋 View All Job Listings
               </button>
             </div>
@@ -138,11 +229,54 @@ const JobMatching = () => {
 
   return (
     <div className="job-matching-page">
-      <Header />
+      <Header 
+        onAuthClick={() => openAuthModal()} 
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onLogout={handleLogout}
+      />
       
       <main className="container py-5">
         <div className="row justify-content-center">
           <div className="col-lg-10">
+            {/* Welcome Message for Authenticated User */}
+            {isAuthenticated && user && (
+              <div className="welcome-message mb-4">
+                <div className="alert alert-success d-flex align-items-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-2">
+                    <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div>
+                    <strong>Welcome back, {user.name}!</strong><br />
+                    <small>Ready to find your perfect job match with AI-powered analysis</small>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Authentication Notice for Non-authenticated Users */}
+            {!isAuthenticated && (
+              <div className="auth-notice mb-4">
+                <div className="alert alert-warning d-flex align-items-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-2">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                  </svg>
+                  <div>
+                    <strong>Login Required</strong><br />
+                    <small>Silakan login untuk menggunakan fitur Job Matching</small>
+                  </div>
+                  <button 
+                    className="btn btn-primary btn-sm ms-auto"
+                    onClick={() => openAuthModal()}
+                  >
+                    Login
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Progress Steps */}
             <div className="steps-indicator mb-5">
               <div className="d-flex justify-content-between align-items-center">
@@ -181,6 +315,13 @@ const JobMatching = () => {
           </div>
         </div>
       </main>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={closeAuthModal}
+        message={authMessage}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };
