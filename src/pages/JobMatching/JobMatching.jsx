@@ -258,20 +258,22 @@ const JobMatching = () => {
             {/* Authentication Notice for Non-authenticated Users */}
             {!isAuthenticated && (
               <div className="auth-notice mb-4">
-                <div className="alert alert-warning d-flex align-items-center">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-2">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                    <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="2"/>
-                  </svg>
-                  <div>
-                    <strong>Login Required</strong><br />
-                    <small>Silakan login untuk menggunakan fitur Job Matching</small>
+                <div className="alert alert-info d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-3">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                    </svg>
+                    <div>
+                      <h6 className="mb-1">🔐 Login Diperlukan</h6>
+                      <small className="text-muted">Silakan login untuk menggunakan fitur AI Job Matching dan menyimpan hasil analisis CV Anda</small>
+                    </div>
                   </div>
                   <button 
-                    className="btn btn-primary btn-sm ms-auto"
+                    className="btn btn-primary btn-sm"
                     onClick={() => openAuthModal()}
                   >
-                    Login
+                    <i className="fas fa-sign-in-alt me-1"></i>
+                    Login Sekarang
                   </button>
                 </div>
               </div>
