@@ -1,127 +1,103 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import Header from '../../components/Header/Header';
-import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
-import AuthModal from '../../components/AuthModal/AuthModal';
-import { jobsData } from '../../data/jobData';
-import './JobList.css';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
+import AuthModal from "../../components/AuthModal/AuthModal";
+import { getJobs } from "../../services/api/matchingAPI";
+import "./JobList.css";
 
 const JobList = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+  const { user } = useAuth();
+
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [sortBy, setSortBy] = useState('relevance');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [sortBy, setSortBy] = useState("relevance");
   const [currentPage, setCurrentPage] = useState(1);
   const [jobsPerPage] = useState(9);
   const [showDetail, setShowDetail] = useState(false);
-
-  // Authentication states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [authMessage, setAuthMessage] = useState('');
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        localStorage.removeItem('user');
-      }
-    }
-  }, []);
-
+  const isAuthenticated = !!user;
   // Load jobs data
   useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const jobsWithScores = jobsData.map(job => ({
-        ...job,
-        matchScore: isAuthenticated ? Math.floor(Math.random() * 30) + 70 : null
-      }));
-      setJobs(jobsWithScores);
-      setFilteredJobs(jobsWithScores);
-      setIsLoading(false);
-    }, 1000);
-  }, [isAuthenticated]);
+    const loadJobs = async () => {
+      setIsLoading(true);
+      try {
+        const jobsFromDB = await getJobs(user?.id);
+        setJobs(jobsFromDB);
+      } catch (error) {
+        console.error("Error loading jobs:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadJobs();
+  }, [user]);
 
   const handleViewJobDetails = useCallback((job) => {
     setIsLoadingDetail(true);
-    
-    // Simulate loading detail
+    setShowDetail(true);
+
     setTimeout(() => {
-      // Enhanced job data with more details
-      const enhancedJob = {
+      setSelectedJob({
         ...job,
-        description: `Kami sedang mencari ${job.title} yang berpengalaman untuk bergabung dengan tim ${job.company}. Posisi ini memerlukan kemampuan teknis yang kuat dan passion untuk berkembang bersama perusahaan.`,
-        requirements: [
-          'Minimum 2-3 tahun pengalaman di bidang terkait',
-          'Menguasai teknologi dan tools yang relevan',
-          'Kemampuan komunikasi yang baik',
-          'Mampu bekerja dalam tim',
-          'Bersedia bekerja dengan target dan deadline'
-        ],
-        responsibilities: [
-          'Mengembangkan dan memelihara sistem/produk perusahaan',
-          'Berkolaborasi dengan tim untuk mencapai target',
-          'Melakukan analisis dan troubleshooting',
-          'Berkontribusi dalam pengembangan strategi tim',
-          'Menjaga kualitas dan standar kerja yang tinggi'
-        ],
+        fullDescription: `
+        <h4>About the Role</h4>
+        <p>We are looking for a talented ${
+          job.title
+        } to join our growing team at ${job.company}. 
+        This is an excellent opportunity to work on challenging projects and grow your career.</p>
+        
+        <h4>Responsibilities</h4>
+        <ul>
+          <li>Develop and maintain high-quality software solutions</li>
+          <li>Collaborate with cross-functional teams</li>
+          <li>Participate in code reviews and technical discussions</li>
+          <li>Contribute to architectural decisions</li>
+        </ul>
+        
+        <h4>Requirements</h4>
+        <ul>
+          ${
+            job.requirements?.map((req) => `<li>${req}</li>`).join("") ||
+            "<li>No specific requirements listed</li>"
+          }
+        </ul>
+        
+        <h4>What We Offer</h4>
+        <ul>
+          <li>Competitive salary: ${job.salary || "Negotiable"}</li>
+          <li>Health insurance and benefits</li>
+          <li>Flexible working arrangements</li>
+          <li>Professional development opportunities</li>
+          <li>Modern office environment</li>
+        </ul>
+      `,
         benefits: [
-          'Gaji kompetitif sesuai pengalaman',
-          'Asuransi kesehatan',
-          'Tunjangan transport dan makan',
-          'Pelatihan dan pengembangan karir',
-          'Lingkungan kerja yang supportif'
+          "Health Insurance",
+          "Dental Coverage",
+          "Flexible Hours",
+          "Remote Work",
+          "Learning Budget",
+          "Gym Membership",
         ],
-        companyInfo: {
-          about: `${job.company} adalah perusahaan yang bergerak di bidang teknologi dan inovasi. Kami berkomitmen untuk memberikan solusi terbaik bagi klien dan menciptakan lingkungan kerja yang inspiratif.`,
-          size: '100-500 karyawan',
-          industry: 'Technology',
-          website: 'https://company.com'
-        },
-        applicationUrl: 'https://www.jobstreet.co.id/job/12345',
-        matchAnalysis: isAuthenticated ? {
-          skillsMatch: Math.floor(Math.random() * 20) + 80,
-          experienceMatch: Math.floor(Math.random() * 25) + 75,
-          locationMatch: 90,
-          salaryMatch: Math.floor(Math.random() * 15) + 85,
-          matchingSkills: ['JavaScript', 'React', 'Node.js', 'MongoDB'],
-          missingSkills: ['Docker', 'Kubernetes'],
-          recommendations: [
-            'Anda memiliki skill yang sangat sesuai dengan posisi ini',
-            'Pengalaman Anda relevan dengan requirements',
-            'Lokasi sesuai dengan preferensi Anda'
-          ]
-        } : null
-      };
-      
-      setSelectedJob(enhancedJob);
-      setShowDetail(true);
+      });
       setIsLoadingDetail(false);
-      
-      // Update URL without page reload
-      window.history.pushState({}, '', `/job-list/${job.id}`);
-    }, 800);
-  }, [isAuthenticated]);
+    }, 300);
+  }, []);
 
   // Check if there's a job ID in URL params
   useEffect(() => {
     if (id && jobs.length > 0) {
-      const job = jobs.find(job => job.id === parseInt(id));
+      const job = jobs.find((j) => j.id === parseInt(id));
       if (job) {
         handleViewJobDetails(job);
       }
@@ -130,109 +106,94 @@ const JobList = () => {
 
   // Filter and search jobs
   useEffect(() => {
-    let filtered = jobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          job.location.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesLocation = !locationFilter || job.location.toLowerCase().includes(locationFilter.toLowerCase());
-      const matchesCompany = !companyFilter || job.company.toLowerCase().includes(companyFilter.toLowerCase());
-      
-      return matchesSearch && matchesLocation && matchesCompany;
-    });
+    let result = jobs;
 
-    // Sort jobs
+    if (searchTerm) {
+      result = result.filter(
+        (job) =>
+          job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          job.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (locationFilter) {
+      result = result.filter((job) => job.location === locationFilter);
+    }
+
+    if (companyFilter) {
+      result = result.filter((job) => job.company === companyFilter);
+    }
+
     switch (sortBy) {
-      case 'matchScore':
-        filtered = filtered.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      case "salary-high":
+        result = [...result].sort(
+          (a, b) => (b.salaryRange || 0) - (a.salaryRange || 0)
+        );
         break;
-      case 'company':
-        filtered = filtered.sort((a, b) => a.company.localeCompare(b.company));
+      case "salary-low":
+        result = [...result].sort(
+          (a, b) => (a.salaryRange || 0) - (b.salaryRange || 0)
+        );
         break;
-      case 'location':
-        filtered = filtered.sort((a, b) => a.location.localeCompare(b.location));
+      case "match-score":
+        result = [...result].sort((a, b) => b.matchScore - a.matchScore);
         break;
-      case 'title':
-        filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+      case "recent":
+        result = [...result].sort(
+          (a, b) => new Date(b.posted) - new Date(a.posted)
+        );
         break;
       default:
         break;
     }
 
-    setFilteredJobs(filtered);
+    setFilteredJobs(result);
     setCurrentPage(1);
   }, [jobs, searchTerm, locationFilter, companyFilter, sortBy]);
 
-  const openAuthModal = (message = '') => {
-    setAuthMessage(message);
+  const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
 
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
-    setAuthMessage('');
-  };
-
-  const handleAuthSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    closeAuthModal();
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setIsAuthenticated(false);
-    navigate('/');
   };
 
   const handleCloseDetail = () => {
     setShowDetail(false);
     setSelectedJob(null);
-    window.history.pushState({}, '', '/job-list');
+    navigate("/jobs");
   };
 
   const handleSaveJob = (job) => {
     if (!isAuthenticated) {
-      openAuthModal('Silakan login untuk menyimpan pekerjaan ke wishlist');
+      openAuthModal();
       return;
     }
 
-    const savedJobs = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    const isAlreadySaved = savedJobs.some(savedJob => savedJob.id === job.id);
-    
-    if (!isAlreadySaved) {
-      savedJobs.push(job);
-      localStorage.setItem('wishlist', JSON.stringify(savedJobs));
-      alert('Pekerjaan berhasil disimpan ke wishlist!');
-    } else {
-      alert('Pekerjaan sudah ada di wishlist Anda');
-    }
+    alert(`Job "${job.title}" saved to your favorites!`);
   };
 
   const handleApplyJob = (job) => {
     if (!isAuthenticated) {
-      openAuthModal('Silakan login terlebih dahulu sebelum melamar pekerjaan');
+      openAuthModal();
       return;
     }
 
-    if (job.applicationUrl) {
-      window.open(job.applicationUrl, '_blank');
-    } else {
-      alert('Link aplikasi tidak tersedia');
-    }
+    navigate("/matching");
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setLocationFilter('');
-    setCompanyFilter('');
-    setSortBy('relevance');
+    setSearchTerm("");
+    setLocationFilter("");
+    setCompanyFilter("");
+    setSortBy("relevance");
   };
 
   // Get unique locations and companies for filters
-  const uniqueLocations = [...new Set(jobs.map(job => job.location))];
-  const uniqueCompanies = [...new Set(jobs.map(job => job.company))];
+  const uniqueLocations = [...new Set(jobs.map((job) => job.location))];
+  const uniqueCompanies = [...new Set(jobs.map((job) => job.company))];
 
   // Pagination
   const indexOfLastJob = currentPage * jobsPerPage;
@@ -242,303 +203,306 @@ const JobList = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  if (isLoading) {
+    return (
+      <div className="job-list-page">
+        <div className="text-center py-5">
+          <LoadingSpinner />
+          <p className="mt-3">Loading amazing job opportunities...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="job-list-page">
-      <Header 
-        onAuthClick={() => openAuthModal()} 
-        isAuthenticated={isAuthenticated}
-        user={user}
-        onLogout={handleLogout}
-      />
-      
-      <div className="job-list-container">
-        <div className="job-list-layout">
-          {/* Job List Section */}
-          <div className={`job-list-section ${showDetail ? 'with-detail' : ''}`}>
-            {/* Page Header */}
-            <div className="page-header">
-              <h1>🔍 Cari Pekerjaan</h1>
-              <p>Temukan pekerjaan impian Anda dari ribuan lowongan yang tersedia</p>
-            </div>
+      {/* Main Content */}
+      <div className="container-fluid py-4">
+        <div className="row">
+          {/* Sidebar Filters */}
+          <div className="col-lg-3">
+            <div className="filters-sidebar">
+              <div className="filters-header">
+                <h5>🔍 Filters</h5>
+                <button onClick={clearFilters} className="btn btn-link btn-sm">
+                  Clear All
+                </button>
+              </div>
 
-            {/* Filters Section */}
-            <div className="filters-section">
-              <div className="filters-row">
+              {/* Search */}
+              <div className="filter-section">
+                <label>Search</label>
                 <input
                   type="text"
-                  className="search-input"
-                  placeholder="Cari pekerjaan, perusahaan..."
+                  className="form-control"
+                  placeholder="Job title or company..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+              </div>
+
+              {/* Location Filter */}
+              <div className="filter-section">
+                <label>Location</label>
                 <select
-                  className="filter-select"
+                  className="form-select"
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                 >
-                  <option value="">Semua Lokasi</option>
-                  {uniqueLocations.map(location => (
-                    <option key={location} value={location}>{location}</option>
+                  <option value="">All Locations</option>
+                  {uniqueLocations.map((location, idx) => (
+                    <option key={idx} value={location}>
+                      {location}
+                    </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Company Filter */}
+              <div className="filter-section">
+                <label>Company</label>
                 <select
-                  className="filter-select"
+                  className="form-select"
                   value={companyFilter}
                   onChange={(e) => setCompanyFilter(e.target.value)}
                 >
-                  <option value="">Semua Perusahaan</option>
-                  {uniqueCompanies.map(company => (
-                    <option key={company} value={company}>{company}</option>
+                  <option value="">All Companies</option>
+                  {uniqueCompanies.map((company, idx) => (
+                    <option key={idx} value={company}>
+                      {company}
+                    </option>
                   ))}
                 </select>
-                <button className="reset-btn" onClick={clearFilters}>
-                  Reset
-                </button>
+              </div>
+
+              {/* Sort By */}
+              <div className="filter-section">
+                <label>Sort By</label>
+                <select
+                  className="form-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="relevance">Relevance</option>
+                  <option value="match-score">Match Score</option>
+                  <option value="recent">Most Recent</option>
+                  <option value="salary-high">Salary: High to Low</option>
+                  <option value="salary-low">Salary: Low to High</option>
+                </select>
+              </div>
+
+              {/* Results Count */}
+              <div className="results-count mt-3">
+                <p className="text-muted mb-0">
+                  <strong>{filteredJobs.length}</strong> jobs found
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Results Summary */}
-            <div className="results-summary">
-              Menampilkan {currentJobs.length} dari {filteredJobs.length} pekerjaan
-              {!isAuthenticated && (
-                <div className="login-notice">
-                  💡 Login untuk melihat skor kecocokan dengan profil Anda
-                </div>
-              )}
-            </div>
-
-            {/* Job List */}
-            {isLoading ? (
-              <div className="loading-container">
-                <LoadingSpinner />
-                <p>Memuat daftar pekerjaan...</p>
+          {/* Job Listings */}
+          <div className="col-lg-9">
+            {currentJobs.length === 0 ? (
+              <div className="no-results text-center py-5">
+                <h3>No jobs found</h3>
+                <p className="text-muted">Try adjusting your filters</p>
+                <button onClick={clearFilters} className="btn btn-primary mt-3">
+                  Clear Filters
+                </button>
               </div>
             ) : (
               <>
-                <div className="job-cards-container">
-                  {currentJobs.length > 0 ? (
-                    currentJobs.map(job => (
-                      <div key={job.id} className="job-card" onClick={() => handleViewJobDetails(job)}>
-                        <div className="job-card-header">
-                          <div className="company-logo">
-                            <span className="logo-text">
-                              {job.company.substring(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="job-info">
-                            <h3 className="job-title">{job.title}</h3>
-                            <p className="company-name">{job.company} ✓</p>
-                          </div>
-                          <button 
-                            className="save-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveJob(job);
-                            }}
-                          >
-                            ♡
-                          </button>
+                <div className="jobs-grid">
+                  {currentJobs.map((job, index) => (
+                    <div
+                      key={index}
+                      className="job-card"
+                      onClick={() => handleViewJobDetails(job)}
+                    >
+                      <div className="job-card-header">
+                        <div className="company-logo">
+                          {job.company.charAt(0)}
                         </div>
-                        
-                        <div className="job-details">
-                          <div className="detail-item">
-                            <span className="icon">👤</span>
-                            <span>Penuh waktu</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="icon">📍</span>
-                            <span>{job.location}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="icon">💼</span>
-                            <span>Min. {Math.floor(Math.random() * 3) + 1} tahun</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="icon">💰</span>
-                            <span>{job.salary || 'Negotiable'}</span>
-                          </div>
-                        </div>
-
-                        <div className="job-footer">
-                          <span className="hot-badge">Pelamar Masih Sedikit</span>
-                          <span className="posted-time">
-                            {Math.floor(Math.random() * 30) + 1}j lalu
-                          </span>
-                        </div>
+                        <div className="job-match-score">{job.matchScore}%</div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="no-results">
-                      <h4>😔 Tidak ada pekerjaan ditemukan</h4>
-                      <p>Coba ubah filter pencarian Anda</p>
-                      <button className="btn-primary" onClick={clearFilters}>
-                        Reset Filter
-                      </button>
+
+                      <h4 className="job-title">{job.title}</h4>
+                      <p className="company-name">{job.company}</p>
+                      <p className="job-location">📍 {job.location}</p>
+
+                      {job.salary && (
+                        <p className="job-salary">💰 {job.salary}</p>
+                      )}
+
+                      {job.requirements && job.requirements.length > 0 && (
+                        <div className="job-skills">
+                          {job.requirements.slice(0, 3).map((skill, idx) => (
+                            <span key={idx} className="skill-badge">
+                              {skill}
+                            </span>
+                          ))}
+                          {job.requirements.length > 3 && (
+                            <span className="skill-badge more">
+                              +{job.requirements.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="job-card-footer">
+                        <button
+                          className="btn btn-outline-primary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveJob(job);
+                          }}
+                        >
+                          💾 Save
+                        </button>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApplyJob(job);
+                          }}
+                        >
+                          Apply Now
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="pagination">
-                    <button 
-                      className={`page-btn ${currentPage === 1 ? 'disabled' : ''}`}
-                      onClick={() => paginate(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      ← Previous
-                    </button>
-                    
-                    {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                      const pageNum = index + 1;
-                      return (
-                        <button 
-                          key={pageNum} 
-                          className={`page-btn ${currentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => paginate(pageNum)}
+                  <div className="pagination-container">
+                    <nav>
+                      <ul className="pagination justify-content-center">
+                        <li
+                          className={`page-item ${
+                            currentPage === 1 ? "disabled" : ""
+                          }`}
                         >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    
-                    <button 
-                      className={`page-btn ${currentPage === totalPages ? 'disabled' : ''}`}
-                      onClick={() => paginate(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next →
-                    </button>
+                          <button
+                            className="page-link"
+                            onClick={() => paginate(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            Previous
+                          </button>
+                        </li>
+                        {[...Array(totalPages)].map((_, index) => (
+                          <li
+                            key={index}
+                            className={`page-item ${
+                              currentPage === index + 1 ? "active" : ""
+                            }`}
+                          >
+                            <button
+                              className="page-link"
+                              onClick={() => paginate(index + 1)}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        ))}
+                        <li
+                          className={`page-item ${
+                            currentPage === totalPages ? "disabled" : ""
+                          }`}
+                        >
+                          <button
+                            className="page-link"
+                            onClick={() => paginate(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
                   </div>
                 )}
               </>
             )}
           </div>
-
-          {/* Job Detail Section */}
-          {showDetail && (
-            <div className="job-detail-section">
-              <div className="job-detail-header">
-                <button className="back-btn" onClick={handleCloseDetail}>
-                  ← Kembali ke Daftar
-                </button>
-              </div>
-
-              {isLoadingDetail ? (
-                <div className="loading-container">
-                  <LoadingSpinner />
-                  <p>Memuat detail pekerjaan...</p>
-                </div>
-              ) : selectedJob ? (
-                <div className="job-detail-content">
-                  {/* Job Header */}
-                  <div className="detail-header">
-                    <div className="detail-title-section">
-                      <h2>{selectedJob.title}</h2>
-                      <h5>{selectedJob.company}</h5>
-                    </div>
-                    {selectedJob.matchScore && (
-                      <div className="match-score">
-                        <div className="score-circle">
-                          {selectedJob.matchScore}%
-                        </div>
-                        <small>Match</small>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="detail-meta">
-                    <span>📍 {selectedJob.location}</span>
-                    <span>💰 {selectedJob.salary}</span>
-                    <span>📅 Full Time</span>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="detail-actions">
-                    <button 
-                      className="btn-primary"
-                      onClick={() => handleApplyJob(selectedJob)}
-                    >
-                      🚀 Lamar Pekerjaan
-                    </button>
-                    <button 
-                      className="btn-secondary"
-                      onClick={() => handleSaveJob(selectedJob)}
-                    >
-                      💾 Simpan
-                    </button>
-                  </div>
-
-                  {/* Job Sections */}
-                  <div className="detail-section">
-                    <h5>📋 Deskripsi Pekerjaan</h5>
-                    <p>{selectedJob.description}</p>
-                  </div>
-
-                  <div className="detail-section">
-                    <h5>📌 Requirements</h5>
-                    <ul>
-                      {selectedJob.requirements.map((req, index) => (
-                        <li key={index}>{req}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="detail-section">
-                    <h5>🎯 Tanggung Jawab</h5>
-                    <ul>
-                      {selectedJob.responsibilities.map((resp, index) => (
-                        <li key={index}>{resp}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="detail-section">
-                    <h5>🎁 Benefits</h5>
-                    <ul>
-                      {selectedJob.benefits.map((benefit, index) => (
-                        <li key={index}>{benefit}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Company Info */}
-                  <div className="detail-section company-section">
-                    <h5>🏢 Tentang Perusahaan</h5>
-                    <h6>{selectedJob.company}</h6>
-                    <p>{selectedJob.companyInfo.about}</p>
-                    <div className="company-details">
-                      <p><strong>Ukuran:</strong> {selectedJob.companyInfo.size}</p>
-                      <p><strong>Industri:</strong> {selectedJob.companyInfo.industry}</p>
-                    </div>
-                  </div>
-
-                  {/* Login Notice for Non-authenticated Users */}
-                  {!isAuthenticated && (
-                    <div className="auth-notice">
-                      <h6>💡 Dapatkan Lebih Banyak</h6>
-                      <p>Login untuk melihat analisis kecocokan dengan CV Anda</p>
-                      <button 
-                        className="btn-primary"
-                        onClick={() => openAuthModal()}
-                      >
-                        Login Sekarang
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )}
         </div>
       </div>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={closeAuthModal}
-        message={authMessage}
-        onAuthSuccess={handleAuthSuccess}
-      />
+      {/* Job Detail Modal */}
+      {showDetail && selectedJob && (
+        <div className="job-detail-modal" onClick={handleCloseDetail}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={handleCloseDetail}>
+              ×
+            </button>
+
+            {isLoadingDetail ? (
+              <div className="text-center py-5">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <>
+                <div className="modal-header">
+                  <div className="company-logo-large">
+                    {selectedJob.company.charAt(0)}
+                  </div>
+                  <div>
+                    <h2>{selectedJob.title}</h2>
+                    <p className="company-name">{selectedJob.company}</p>
+                    <p className="job-meta">
+                      📍 {selectedJob.location} | 💰{" "}
+                      {selectedJob.salary || "Negotiable"} |{" "}
+                      <span className="match-badge">
+                        {selectedJob.matchScore}% Match
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="modal-body">
+                  <div
+                    className="job-description"
+                    dangerouslySetInnerHTML={{
+                      __html: selectedJob.fullDescription,
+                    }}
+                  />
+
+                  {selectedJob.benefits && (
+                    <div className="benefits-section">
+                      <h4>Benefits</h4>
+                      <div className="benefits-grid">
+                        {selectedJob.benefits.map((benefit, idx) => (
+                          <div key={idx} className="benefit-item">
+                            ✓ {benefit}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-outline-primary"
+                    onClick={() => handleSaveJob(selectedJob)}
+                  >
+                    💾 Save Job
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleApplyJob(selectedJob)}
+                  >
+                    🚀 Apply with AI Matching
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   );
 };

@@ -102,13 +102,6 @@ class AccuracyTester {
     console.log(`\n🔬 Testing: ${testCase.testId} - ${testCase.description}`);
     
     try {
-      // Simulate file object untuk testing
-      const mockFile = {
-        name: `${testCase.testId}.txt`,
-        size: testCase.cvContent.length,
-        content: testCase.cvContent
-      };
-
       // Step 1: Analyze CV 
       const analysisResult = await this.mockCVAnalysis(testCase.cvContent, cvAnalyzer);
       
@@ -368,33 +361,6 @@ class AccuracyTester {
       totalTests: 0, passedTests: 0, failedTests: 0
     };
     this.detailedResults = [];
-  }
-
-  // ENHANCED: Check if job title matches with fuzzy logic
-  checkJobTitleMatch(actualJob, expectedJob) {
-    const actual = actualJob.toLowerCase().trim();
-    const expected = expectedJob.toLowerCase().trim();
-    
-    // Exact match
-    if (actual === expected) return true;
-    
-    // Contains match (either direction)
-    if (actual.includes(expected) || expected.includes(actual)) return true;
-    
-    // Word overlap match
-    const actualWords = actual.split(/[\s-_]+/).filter(w => w.length > 2);
-    const expectedWords = expected.split(/[\s-_]+/).filter(w => w.length > 2);
-    
-    // Check if at least 50% of words match
-    const matchingWords = actualWords.filter(word => 
-      expectedWords.some(expWord => 
-        word.includes(expWord) || expWord.includes(word)
-      )
-    );
-    
-    const matchRatio = matchingWords.length / Math.min(actualWords.length, expectedWords.length);
-    console.log(`🔍 Job Match Check: "${actual}" vs "${expected}" - Ratio: ${(matchRatio*100).toFixed(1)}%`);
-    return matchRatio >= 0.5; // 50% overlap threshold
   }
 }
 

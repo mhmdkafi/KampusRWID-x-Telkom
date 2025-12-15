@@ -1,241 +1,363 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '../../components/Header/Header';
-import CVUpload from '../../components/cv/CVUpload';
-import CVAnalysis from '../../components/cv/CVAnalysis';
-import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
-import AuthModal from '../../components/AuthModal/AuthModal';
-import { jobsData } from '../../data/jobData';
-import './JobMatching.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import CVUpload from "../../components/cv/CVUpload";
+import CVAnalysis from "../../components/cv/CVAnalysis";
+import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
+import AuthModal from "../../components/AuthModal/AuthModal";
+import { cvAnalyzer } from "../../services/ml/cvAnalyzer";
+import { matchCalculator } from "../../services/ml/matchCalculator";
+import "./JobMatching.css";
 
 const JobMatching = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
   const [currentStep, setCurrentStep] = useState(1);
-  const [cvData, setCvData] = useState(null);
+  const [cvFile, setCvFile] = useState(null); // GANTI NAMA dari cvData ke cvFile
   const [analysisResults, setAnalysisResults] = useState(null);
   const [matchResults, setMatchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Authentication states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [authMessage, setAuthMessage] = useState('');
-  
-  const navigate = useNavigate();
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        localStorage.removeItem('user');
-      }
-    }
-  }, []);
+  const isAuthenticated = !!user;
 
-  const openAuthModal = (message = '') => {
-    setAuthMessage(message);
+  const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
 
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
-    setAuthMessage('');
-  };
-
-  const handleAuthSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    closeAuthModal();
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setIsAuthenticated(false);
-    navigate('/');
   };
 
   const handleCVUpload = async (file) => {
-    if (!isAuthenticated) {
-      openAuthModal('Silakan login terlebih dahulu untuk mengupload CV');
-      return;
-    }
-
     setIsLoading(true);
+    setCvFile(file); // Simpan file untuk CVAnalysis
+
     try {
-      // Simulate CV processing
-      setTimeout(() => {
-        setCvData({
-          fileName: file.name,
-          size: file.size,
-          uploadDate: new Date().toISOString(),
-          type: file.type,
-          uploadedBy: user?.email || 'user'
-        });
-        setCurrentStep(2);
-        setIsLoading(false);
-      }, 2000);
+      console.log("📄 Analyzing CV...");
+      const analysis = await cvAnalyzer.analyzeCV(file);
+      console.log("✅ CV Analysis Complete:", analysis);
+
+      setAnalysisResults(analysis);
+      setCurrentStep(2); // Pindah ke step 2 (CV Analysis)
     } catch (error) {
-      console.error('Error uploading CV:', error);
+      console.error("❌ CV Analysis Error:", error);
+      alert("Failed to analyze CV. Please try again.");
+      setCurrentStep(1);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAnalysisComplete = (results) => {
-    setAnalysisResults(results);
-    
-    // Simulate job matching calculation
-    const matches = jobsData.slice(0, 5).map((job, index) => ({
-      ...job,
-      matchScore: Math.floor(Math.random() * 30) + 70, // Random score 70-100
-      matchReasons: [
-        'Skills match detected',
-        'Experience level aligned',
-        'Location preference'
-      ]
-    })).sort((a, b) => b.matchScore - a.matchScore);
-    
-    setMatchResults(matches);
-    setCurrentStep(3);
+  const handleAnalysisComplete = () => {
+    // Fungsi ini dipanggil dari CVAnalysis setelah selesai
+    console.log("🎯 Starting Job Matching...");
+    setIsLoading(true);
+
+    try {
+      const matches = matchCalculator.calculateMatches(analysisResults);
+      console.log("✅ Job Matching Complete:", matches);
+
+      setMatchResults(matches);
+      setCurrentStep(3);
+    } catch (error) {
+      console.error("❌ Job Matching Error:", error);
+      alert("Failed to match jobs. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
     setCurrentStep(1);
-    setCvData(null);
+    setCvFile(null);
     setAnalysisResults(null);
     setMatchResults([]);
   };
 
-  const handleViewJobDetails = (job) => {
-    console.log('View job details:', job);
-    navigate(`/job-detail/${job.id}`);
-  };
-
-  const handleSaveJob = (job) => {
-    if (!isAuthenticated) {
-      openAuthModal('Silakan login untuk menyimpan pekerjaan ke wishlist');
-      return;
-    }
-
-    // Save to wishlist logic
-    const savedJobs = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    const isAlreadySaved = savedJobs.some(savedJob => savedJob.id === job.id);
-    
-    if (!isAlreadySaved) {
-      savedJobs.push(job);
-      localStorage.setItem('wishlist', JSON.stringify(savedJobs));
-      alert('Pekerjaan berhasil disimpan ke wishlist!');
-    } else {
-      alert('Pekerjaan sudah ada di wishlist Anda');
-    }
-  };
-
   const handleViewAllJobs = () => {
-    navigate('/job-list');
+    navigate("/jobs");
   };
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return <CVUpload onUpload={handleCVUpload} isLoading={isLoading} />;
-      case 2:
-        return (
-          <CVAnalysis 
-            cvData={cvData} 
+    // Step 1: Upload CV
+    if (currentStep === 1) {
+      return (
+        <div className="matching-content">
+          <CVUpload onUpload={handleCVUpload} isLoading={isLoading} />
+        </div>
+      );
+    }
+
+    // Step 2: CV Analysis
+    if (currentStep === 2 && analysisResults && cvFile) {
+      return (
+        <div className="matching-content">
+          <CVAnalysis
+            cvData={{ fileName: cvFile.name, ...analysisResults }}
             onAnalysisComplete={handleAnalysisComplete}
           />
-        );
-      case 3:
-        return (
-          <div className="results-section">
-            <div className="results-header">
-              <h3>🎯 Job Matching Results</h3>
-              <p>Kami menemukan {matchResults.length} pekerjaan yang cocok dengan profil Anda</p>
-              {analysisResults && (
-                <div className="analysis-summary">
-                  <span className="summary-item">📊 Skill Score: {analysisResults.skillScore || 85}</span>
-                  <span className="summary-item">💼 Experience: {analysisResults.experience || '3+ years'}</span>
-                  {user && <span className="summary-item">👤 User: {user.name}</span>}
-                </div>
-              )}
-            </div>
-            
-            <div className="job-matches">
-              {matchResults.map((job, index) => (
-                <div key={index} className="job-match-card">
-                  <div className="match-score">
-                    <div className="score-circle">
-                      <span>{job.matchScore}%</span>
-                    </div>
-                    <small>Match Score</small>
-                  </div>
-                  
-                  <div className="job-info">
-                    <h4>{job.title}</h4>
-                    <p className="company">{job.company}</p>
-                    <p className="location">📍 {job.location}</p>
-                    <p className="salary">💰 {job.salary}</p>
-                    
-                    <div className="match-reasons">
-                      <h6>Why this matches:</h6>
-                      <ul>
-                        {job.matchReasons.map((reason, idx) => (
-                          <li key={idx}>✓ {reason}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="job-actions">
-                    <button 
-                      className="btn btn-primary btn-sm"
-                      onClick={() => handleViewJobDetails(job)}
-                    >
-                      View Details
-                    </button>
-                    <button 
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => handleSaveJob(job)}
-                    >
-                      💾 Save Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="results-actions">
-              <button className="btn btn-outline-primary" onClick={handleReset}>
-                🔄 Analyze Another CV
-              </button>
-              <button 
-                className="btn btn-primary"
-                onClick={handleViewAllJobs}
-              >
-                📋 View All Job Listings
-              </button>
-            </div>
-          </div>
-        );
-      default:
-        return <CVUpload onUpload={handleCVUpload} isLoading={isLoading} />;
+        </div>
+      );
     }
+
+    // Step 3: Job Matching Results
+    if (currentStep === 3 && matchResults.length > 0) {
+      return (
+        <div className="results-section">
+          <div className="results-header text-center mb-4">
+            <h3 className="fw-bold" style={{ color: "#22543d" }}>
+              🎯 Top Job Matches for You
+            </h3>
+            <p className="text-muted">
+              Based on your CV analysis, here are the best matching jobs
+            </p>
+          </div>
+
+          {/* CV Summary Card - FIXED */}
+          {analysisResults && (
+            <div
+              className="cv-summary-card mb-4 p-4"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(34, 84, 61, 0.05) 0%, rgba(47, 133, 90, 0.05) 100%)",
+                borderRadius: "12px",
+                border: "1px solid rgba(34, 84, 61, 0.15)",
+              }}
+            >
+              <h6 className="fw-bold mb-3" style={{ color: "#22543d" }}>
+                📄 Your CV Summary
+              </h6>
+              <div className="row g-3">
+                {/* HAPUS Type dan Match Score */}
+                <div className="col-md-6">
+                  <small className="text-muted d-block">Skills Found</small>
+                  <span
+                    className="fw-bold"
+                    style={{ color: "#22543d", fontSize: "1rem" }}
+                  >
+                    {analysisResults.skillsFound?.length || 0} skills
+                  </span>
+                </div>
+                <div className="col-md-6">
+                  <small className="text-muted d-block">Experience</small>
+                  <span
+                    className="fw-bold"
+                    style={{ color: "#22543d", fontSize: "1rem" }}
+                  >
+                    {analysisResults.experienceLevel || "Fresh Graduate"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Skills List */}
+              {analysisResults.skillsFound &&
+                analysisResults.skillsFound.length > 0 && (
+                  <div className="mt-3">
+                    <small className="text-muted d-block mb-2">
+                      Detected Skills:
+                    </small>
+                    <div className="d-flex flex-wrap gap-2">
+                      {analysisResults.skillsFound.map((skill, idx) => (
+                        <span
+                          key={idx}
+                          className="badge"
+                          style={{
+                            background: "#e2e8f0",
+                            color: "#4a5568",
+                            fontSize: "0.75rem",
+                            padding: "0.3rem 0.6rem",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Job Matches - PERBAIKI MATCH SCORE SIZE & HAPUS SAVE JOB */}
+          <div className="job-matches">
+            {matchResults.map((job, index) => (
+              <div
+                key={index}
+                className="job-match-card card mb-3 shadow-sm"
+                style={{
+                  borderRadius: "12px",
+                  border: "1px solid #e2e8f0",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="row align-items-center">
+                    {/* Match Score Circle - PERBESAR 4X */}
+                    <div className="col-auto">
+                      <div
+                        className="score-circle"
+                        style={{
+                          width: "120px", // 4x dari 70px
+                          height: "120px",
+                          borderRadius: "50%",
+                          background: `conic-gradient(#22543d ${
+                            job.matchScore * 3.6
+                          }deg, #e2e8f0 0deg)`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "100px", // 4x dari 56px
+                            height: "100px",
+                            borderRadius: "50%",
+                            background: "white",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexDirection: "column",
+                          }}
+                        >
+                          <span
+                            className="fw-bold"
+                            style={{ color: "#22543d", fontSize: "2.5rem" }} // 4x dari 1.3rem
+                          >
+                            {job.matchScore}%
+                          </span>
+                          <small
+                            style={{ fontSize: "0.9rem", color: "#64748b" }}
+                          >
+                            {" "}
+                            {/* 4x dari 0.65rem */}
+                            match
+                          </small>
+                        </div>
+                      </div>
+                      <div className="text-center mt-2">
+                        <span
+                          className="badge bg-secondary"
+                          style={{ fontSize: "0.8rem" }}
+                        >
+                          #{index + 1}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Job Info */}
+                    <div className="col">
+                      <h5 className="fw-bold mb-2" style={{ color: "#1a202c" }}>
+                        {job.title}
+                      </h5>
+                      <div className="text-muted small mb-2">
+                        <span className="me-3">🏢 {job.company}</span>
+                        <span>📍 {job.location}</span>
+                      </div>
+
+                      {/* Match Reasons */}
+                      <div className="match-reasons">
+                        <h6
+                          className="small fw-bold mb-2"
+                          style={{ color: "#22543d" }}
+                        >
+                          Why this matches:
+                        </h6>
+                        <ul className="list-unstyled small mb-0">
+                          {job.matchReasons &&
+                            job.matchReasons.map((reason, idx) => (
+                              <li
+                                key={idx}
+                                className="mb-1"
+                                style={{ color: "#4a5568" }}
+                              >
+                                <span style={{ color: "#22543d" }}>✓</span>{" "}
+                                {reason}
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+
+                      {/* Job Actions - HAPUS SAVE JOB */}
+                      <div className="job-actions mt-3">
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            background: "#22543d",
+                            color: "white",
+                            border: "none",
+                            padding: "0.5rem 1.5rem",
+                            borderRadius: "6px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="results-actions text-center mt-4">
+            <button
+              onClick={handleReset}
+              className="btn me-3"
+              style={{
+                background: "white",
+                border: "2px solid #22543d",
+                color: "#22543d",
+                padding: "0.6rem 1.5rem",
+                borderRadius: "8px",
+                fontWeight: "600",
+              }}
+            >
+              🔄 Upload New CV
+            </button>
+            <button
+              onClick={handleViewAllJobs}
+              className="btn"
+              style={{
+                background: "#22543d",
+                color: "white",
+                border: "none",
+                padding: "0.6rem 1.5rem",
+                borderRadius: "8px",
+                fontWeight: "600",
+              }}
+            >
+              📋 View All Jobs
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
+  // Loading state untuk auth
+  if (authLoading) {
+    return (
+      <div className="job-matching-page">
+        <div className="text-center py-5">
+          <LoadingSpinner />
+          <p className="mt-3">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="job-matching-page">
-      <Header 
-        onAuthClick={() => openAuthModal()} 
-        isAuthenticated={isAuthenticated}
-        user={user}
-        onLogout={handleLogout}
-      />
-      
+    <div
+      className={`job-matching-page ${isAuthenticated ? "authenticated" : ""}`}
+    >
       <main className="container py-5">
         <div className="row justify-content-center">
           <div className="col-lg-10">
@@ -243,13 +365,37 @@ const JobMatching = () => {
             {isAuthenticated && user && (
               <div className="welcome-message mb-4">
                 <div className="alert alert-success d-flex align-items-center">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-2">
-                    <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="me-2"
+                  >
+                    <path
+                      d="M9 12L11 14L15 10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   <div>
-                    <strong>Welcome back, {user.name}!</strong><br />
-                    <small>Ready to find your perfect job match with AI-powered analysis</small>
+                    <strong>Welcome back, {user.full_name}!</strong>
+                    <br />
+                    <small>
+                      Ready to find your perfect job match with AI-powered
+                      analysis
+                    </small>
                   </div>
                 </div>
               </div>
@@ -260,70 +406,86 @@ const JobMatching = () => {
               <div className="auth-notice mb-4">
                 <div className="alert alert-info d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="me-3">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="me-3"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                      <path
+                        d="M12 8V12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="12" cy="16" r="1" fill="currentColor" />
                     </svg>
                     <div>
-                      <h6 className="mb-1">🔐 Login Diperlukan</h6>
-                      <small className="text-muted">Silakan login untuk menggunakan fitur AI Job Matching dan menyimpan hasil analisis CV Anda</small>
+                      <h6 className="mb-0">Please login to continue</h6>
+                      <small>
+                        You need to be logged in to upload CV and get job
+                        matches
+                      </small>
                     </div>
                   </div>
-                  <button 
-                    className="btn btn-primary btn-sm"
-                    onClick={() => openAuthModal()}
+                  <button
+                    onClick={openAuthModal}
+                    className="btn btn-sm"
+                    style={{
+                      background: "#22543d",
+                      color: "white",
+                      border: "none",
+                    }}
                   >
-                    <i className="fas fa-sign-in-alt me-1"></i>
-                    Login Sekarang
+                    Login Now
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Progress Steps */}
-            <div className="steps-indicator mb-5">
+            {/* Steps Indicator */}
+            <div className="steps-indicator mb-4">
               <div className="d-flex justify-content-between align-items-center">
-                <div className={`step ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
-                  <div className="step-number">
-                    {currentStep > 1 ? '✓' : '1'}
-                  </div>
+                <div
+                  className={`step ${currentStep >= 1 ? "active" : ""} ${
+                    currentStep > 1 ? "completed" : ""
+                  }`}
+                >
+                  <div className="step-number">1</div>
                   <span>Upload CV</span>
                 </div>
                 <div className="step-connector"></div>
-                <div className={`step ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
-                  <div className="step-number">
-                    {currentStep > 2 ? '✓' : '2'}
-                  </div>
+                <div
+                  className={`step ${currentStep >= 2 ? "active" : ""} ${
+                    currentStep > 2 ? "completed" : ""
+                  }`}
+                >
+                  <div className="step-number">2</div>
                   <span>Analisis CV</span>
                 </div>
                 <div className="step-connector"></div>
-                <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
+                <div className={`step ${currentStep >= 3 ? "active" : ""}`}>
                   <div className="step-number">3</div>
                   <span>Job Matching</span>
                 </div>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="matching-content">
-              {isLoading ? (
-                <div className="text-center py-5">
-                  <LoadingSpinner />
-                  <p className="mt-3">Memproses CV Anda...</p>
-                </div>
-              ) : (
-                renderStepContent()
-              )}
-            </div>
+            {/* Step Content */}
+            {renderStepContent()}
           </div>
         </div>
       </main>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={closeAuthModal}
-        message={authMessage}
-        onAuthSuccess={handleAuthSuccess}
-      />
+      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   );
 };

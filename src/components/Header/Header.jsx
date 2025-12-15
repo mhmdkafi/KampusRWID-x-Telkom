@@ -5,8 +5,24 @@ import AuthModal from "../AuthModal/AuthModal";
 import "./Header.css";
 
 function Header() {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Guard: Jangan render admin links kalau masih loading
+  if (loading) {
+    return (
+      <header className="header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            JobMatch AI
+          </Link>
+          <nav className="nav">
+            <span>Loading...</span>
+          </nav>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="header">
@@ -23,7 +39,7 @@ function Header() {
 
           {user ? (
             <div className="user-menu">
-              <span className="user-email">{user.email}</span>
+              <span className="user-email">{user.full_name}</span>
               {isAdmin() && <span className="admin-badge">Admin</span>}
               <button onClick={signOut} className="logout-btn">
                 Logout

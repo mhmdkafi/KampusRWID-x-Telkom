@@ -498,7 +498,6 @@ class MatchCalculator {
 
   getCombinedReason(experience, education, jobTitle) {
     const expWords = experience.toLowerCase().split(' ');
-    const edWords = education.toLowerCase().split(' ');
     const jobWords = jobTitle.toLowerCase().split(' ');
     
     const commonExpJob = expWords.filter(word => 
@@ -510,47 +509,6 @@ class MatchCalculator {
     }
     
     return null;
-  }
-
-  // ENHANCED: Better skill similarity detection
-  areSimilarSkills(skill1, skill2) {
-    const s1 = skill1.toLowerCase().trim();
-    const s2 = skill2.toLowerCase().trim();
-    
-    if (s1 === s2) return true;
-    if (s1.includes(s2) || s2.includes(s1)) return true;
-    
-    // Technology synonyms and related skills
-    const skillSynonyms = {
-      'javascript': ['js', 'react', 'vue', 'angular', 'node', 'typescript'],
-      'python': ['django', 'flask', 'pandas', 'numpy'],
-      'react': ['jsx', 'reactjs', 'javascript', 'frontend'],
-      'sql': ['mysql', 'postgresql', 'database', 'oracle'],
-      'css': ['styling', 'bootstrap', 'sass', 'scss'],
-      'html': ['markup', 'web', 'frontend'],
-      'sales': ['selling', 'account', 'business development', 'client'],
-      'marketing': ['digital marketing', 'social media', 'advertising'],
-      'accounting': ['bookkeeping', 'finance', 'financial'],
-      'management': ['leadership', 'team lead', 'supervisor']
-    };
-    
-    // Check if skills are related through synonyms
-    for (const [key, synonyms] of Object.entries(skillSynonyms)) {
-      if ((s1.includes(key) || synonyms.some(syn => s1.includes(syn))) &&
-          (s2.includes(key) || synonyms.some(syn => s2.includes(syn)))) {
-        return true;
-      }
-    }
-    
-    // Check common word overlap
-    const words1 = s1.split(/[\s-_]+/).filter(w => w.length > 2);
-    const words2 = s2.split(/[\s-_]+/).filter(w => w.length > 2);
-    
-    const overlap = words1.filter(w1 => 
-      words2.some(w2 => w1.includes(w2) || w2.includes(w1))
-    ).length;
-    
-    return overlap >= Math.min(words1.length, words2.length) * 0.5;
   }
 
   // ENHANCED: Better skill similarity detection
