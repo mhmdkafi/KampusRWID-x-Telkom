@@ -1,0 +1,310 @@
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { getJobById, saveJob, unsaveJob } from "../../services/api/matchingAPI";
+import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
+import AuthModal from "../../components/AuthModal/AuthModal";
+import "./JobDetail.css";
+
+const JobDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [job, setJob] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchJobDetail();
+  }, [id]);
+
+  const fetchJobDetail = async () => {
+    try {
+      setIsLoading(true);
+      const jobData = await getJobById(id);
+      setJob(jobData);
+      setIsSaved(jobData.is_saved || false);
+    } catch (error) {
+      console.error("Error fetching job:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveJob = async () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      if (isSaved) {
+        await unsaveJob(job.id);
+        setIsSaved(false);
+      } else {
+        await saveJob(job.id);
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error("Error saving job:", error);
+      alert("Failed to save job");
+    }
+  };
+
+  const handleApply = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    alert(`Apply to ${job.title} at ${job.company}`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="job-detail-loading">
+        <LoadingSpinner />
+        <p>Loading job details...</p>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="job-detail-error">
+        <h2>Job Not Found</h2>
+        <p>The job you're looking for doesn't exist.</p>
+        <Link to="/jobs" className="btn-back-to-jobs">
+          Back to Jobs
+        </Link>
+      </div>
+    );
+  }
+
+  const skills = Array.isArray(job.skills) ? job.skills : [];
+  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
+  const responsibilities = Array.isArray(job.responsibilities) ? job.responsibilities : [];
+  const benefits = Array.isArray(job.benefits) ? job.benefits : [];
+
+  return (
+    <div className="job-detail-page">
+      <div className="job-detail-container">
+        {/* Breadcrumb */}
+        <nav className="breadcrumb">
+          <Link to="/">Home</Link>
+          <span className="separator">›</span>
+          <Link to="/jobs">Jobs</Link>
+          <span className="separator">›</span>
+          <span className="current">{job.title}</span>
+        </nav>
+
+        {/* Job Header */}
+        <div className="job-detail-header">
+          <div className="header-left">
+            <div className="company-logo-large">
+              {job.image_url ? (
+                <img src={job.image_url} alt={job.company} />
+              ) : (
+                <div className="logo-placeholder">
+                  {job.company.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="header-info">
+              <h1 className="job-title-large">{job.title}</h1>
+              <div className="company-info">
+                <h3 className="company-name">{job.company}</h3>
+                <div className="job-meta">
+                  {job.location && (
+                    <span className="meta-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 10C21 17 12 23 12 23S3 17 3 10C3 5.58 6.58 2 12 2S21 5.58 21 10Z" stroke="currentColor" strokeWidth="2" />
+                        <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                      {job.location}
+                    </span>
+                  )}
+                  {job.job_type && (
+                    <span className="meta-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+                        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                      {job.job_type}
+                    </span>
+                  )}
+                  {job.experience_required && (
+                    <span className="meta-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                        <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                      {job.experience_required}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="header-actions">
+            <button
+              className={`btn-save-large ${isSaved ? "saved" : ""}`}
+              onClick={handleSaveJob}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M19 21L12 16L5 21V5C5 3.89 5.89 3 7 3H17C18.11 3 19 3.89 19 5V21Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill={isSaved ? "currentColor" : "none"}
+                />
+              </svg>
+              {isSaved ? "Saved" : "Save Job"}
+            </button>
+            <button className="btn-apply-large" onClick={handleApply}>
+              Apply Now
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="job-detail-content">
+          <div className="content-main">
+            {/* Salary */}
+            {job.salary && (
+              <div className="salary-section">
+                <div className="salary-badge">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  <div>
+                    <span className="salary-label">Salary</span>
+                    <span className="salary-amount">{job.salary}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {job.description && (
+              <section className="detail-section">
+                <h2>About the Role</h2>
+                <p>{job.description}</p>
+              </section>
+            )}
+
+            {/* Responsibilities */}
+            {responsibilities.length > 0 && (
+              <section className="detail-section">
+                <h2>Responsibilities</h2>
+                <ul className="styled-list">
+                  {responsibilities.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Requirements */}
+            {requirements.length > 0 && (
+              <section className="detail-section">
+                <h2>Requirements</h2>
+                <ul className="styled-list">
+                  {requirements.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Skills */}
+            {skills.length > 0 && (
+              <section className="detail-section">
+                <h2>Required Skills</h2>
+                <div className="skills-grid">
+                  {skills.map((skill, index) => (
+                    <span key={index} className="skill-badge">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Benefits */}
+            {benefits.length > 0 && (
+              <section className="detail-section">
+                <h2>Benefits & Perks</h2>
+                <ul className="benefits-list">
+                  {benefits.map((benefit, index) => (
+                    <li key={index}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="#22543d" strokeWidth="2" />
+                        <path d="M8 12L11 15L16 9" stroke="#22543d" strokeWidth="2" />
+                      </svg>
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <aside className="content-sidebar">
+            <div className="sidebar-card">
+              <h3>Company Information</h3>
+              <div className="company-detail-item">
+                <span className="label">Company</span>
+                <span className="value">{job.company}</span>
+              </div>
+              {job.location && (
+                <div className="company-detail-item">
+                  <span className="label">Location</span>
+                  <span className="value">{job.location}</span>
+                </div>
+              )}
+              {job.job_type && (
+                <div className="company-detail-item">
+                  <span className="label">Employment Type</span>
+                  <span className="value">{job.job_type}</span>
+                </div>
+              )}
+              {job.created_at && (
+                <div className="company-detail-item">
+                  <span className="label">Posted</span>
+                  <span className="value">
+                    {new Date(job.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="sidebar-card">
+              <h3>Share this job</h3>
+              <div className="share-buttons">
+                <button className="share-btn" title="Copy Link">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      {/* Auth Modal */}
+      {isAuthModalOpen && (
+        <AuthModal onClose={() => setIsAuthModalOpen(false)} />
+      )}
+    </div>
+  );
+};
+
+export default JobDetail;

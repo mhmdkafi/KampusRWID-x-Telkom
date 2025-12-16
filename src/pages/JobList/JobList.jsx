@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import { getJobs } from "../../services/api/matchingAPI";
+import JobCard from "../../components/JobCard/JobCard";
 import "./JobList.css";
 
 const JobList = () => {
@@ -13,16 +14,13 @@ const JobList = () => {
   const { user } = useAuth();
 
   const [jobs, setJobs] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
   const [currentPage, setCurrentPage] = useState(1);
   const [jobsPerPage] = useState(9);
-  const [showDetail, setShowDetail] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const isAuthenticated = !!user;
@@ -121,69 +119,24 @@ const JobList = () => {
     [jobs]
   );
 
-  const handleViewJobDetails = useCallback((job) => {
-    setIsLoadingDetail(true);
-    setShowDetail(true);
-
-    // OPTIMASI 4: Kurangi setTimeout delay dari 300ms ke 100ms
-    setTimeout(() => {
-      setSelectedJob({
-        ...job,
-        fullDescription: `
-        <h4>About the Role</h4>
-        <p>We are looking for a talented ${
-          job.title
-        } to join our growing team at ${job.company}. 
-        This is an excellent opportunity to work on challenging projects and grow your career.</p>
-        
-        <h4>Responsibilities</h4>
-        <ul>
-          <li>Develop and maintain high-quality software solutions</li>
-          <li>Collaborate with cross-functional teams</li>
-          <li>Participate in code reviews and technical discussions</li>
-          <li>Contribute to architectural decisions</li>
-        </ul>
-        
-        <h4>Requirements</h4>
-        <ul>
-          ${
-            job.requirements?.map((req) => `<li>${req}</li>`).join("") ||
-            "<li>No specific requirements listed</li>"
-          }
-        </ul>
-        
-        <h4>What We Offer</h4>
-        <ul>
-          <li>Competitive salary: ${job.salary || "Negotiable"}</li>
-          <li>Health insurance and benefits</li>
-          <li>Flexible working arrangements</li>
-          <li>Professional development opportunities</li>
-          <li>Modern office environment</li>
-        </ul>
-      `,
-        benefits: [
-          "Health Insurance",
-          "Dental Coverage",
-          "Flexible Hours",
-          "Remote Work",
-          "Learning Budget",
-          "Gym Membership",
-        ],
-      });
-      setIsLoadingDetail(false);
-    }, 100); // Kurangi dari 300ms
-  }, []);
+  const handleViewJobDetails = useCallback(
+    (job) => {
+      // Navigate ke halaman detail terpisah
+      navigate(`/jobs/${job.id}`);
+    },
+    [navigate]
+  );
 
   // Check URL params for job detail
   useEffect(() => {
     const jobIdFromUrl = searchParams.get("id");
-    if (jobIdFromUrl && jobs.length > 0 && !selectedJob) {
+    if (jobIdFromUrl && jobs.length > 0) {
       const job = jobs.find((j) => j.id === parseInt(jobIdFromUrl));
       if (job) {
         handleViewJobDetails(job);
       }
     }
-  }, [searchParams, jobs, selectedJob, handleViewJobDetails]);
+  }, [searchParams, jobs, handleViewJobDetails]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -196,12 +149,6 @@ const JobList = () => {
 
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
-  };
-
-  const handleCloseDetail = () => {
-    setShowDetail(false);
-    setSelectedJob(null);
-    navigate("/jobs");
   };
 
   const handleSaveJob = (job) => {
@@ -346,61 +293,12 @@ const JobList = () => {
               <>
                 <div className="jobs-grid">
                   {currentJobs.map((job, index) => (
-                    <div
-                      key={index}
-                      className="job-card"
-                      onClick={() => handleViewJobDetails(job)}
-                    >
-                      <div className="job-card-header">
-                        <div className="company-logo">
-                          {job.company.charAt(0)}
-                        </div>
-                        <div className="job-match-score">{job.matchScore}%</div>
-                      </div>
-
-                      <h4 className="job-title">{job.title}</h4>
-                      <p className="company-name">{job.company}</p>
-                      <p className="job-location">📍 {job.location}</p>
-
-                      {job.salary && (
-                        <p className="job-salary">💰 {job.salary}</p>
-                      )}
-
-                      {job.requirements && job.requirements.length > 0 && (
-                        <div className="job-skills">
-                          {job.requirements.slice(0, 3).map((skill, idx) => (
-                            <span key={idx} className="skill-badge">
-                              {skill}
-                            </span>
-                          ))}
-                          {job.requirements.length > 3 && (
-                            <span className="skill-badge more">
-                              +{job.requirements.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="job-card-footer">
-                        <button
-                          className="btn btn-outline-primary btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveJob(job);
-                          }}
-                        >
-                          💾 Save
-                        </button>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleApplyJob(job);
-                          }}
-                        >
-                          Apply Now
-                        </button>
-                      </div>
+                    <div key={index} onClick={() => handleViewJobDetails(job)}>
+                      <JobCard
+                        job={job}
+                        onSave={handleSaveJob}
+                        onApply={handleApplyJob}
+                      />
                     </div>
                   ))}
                 </div>
@@ -460,79 +358,6 @@ const JobList = () => {
           </div>
         </div>
       </div>
-
-      {/* Job Detail Modal */}
-      {showDetail && selectedJob && (
-        <div className="job-detail-modal" onClick={handleCloseDetail}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={handleCloseDetail}>
-              ×
-            </button>
-
-            {isLoadingDetail ? (
-              <div className="text-center py-5">
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <>
-                <div className="modal-header">
-                  <div className="company-logo-large">
-                    {selectedJob.company.charAt(0)}
-                  </div>
-                  <div>
-                    <h2>{selectedJob.title}</h2>
-                    <p className="company-name">{selectedJob.company}</p>
-                    <p className="job-meta">
-                      📍 {selectedJob.location} | 💰{" "}
-                      {selectedJob.salary || "Negotiable"} |{" "}
-                      <span className="match-badge">
-                        {selectedJob.matchScore}% Match
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="modal-body">
-                  <div
-                    className="job-description"
-                    dangerouslySetInnerHTML={{
-                      __html: selectedJob.fullDescription,
-                    }}
-                  />
-
-                  {selectedJob.benefits && (
-                    <div className="benefits-section">
-                      <h4>Benefits</h4>
-                      <div className="benefits-grid">
-                        {selectedJob.benefits.map((benefit, idx) => (
-                          <div key={idx} className="benefit-item">
-                            ✓ {benefit}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="modal-footer">
-                  <button
-                    className="btn btn-outline-primary"
-                    onClick={() => handleSaveJob(selectedJob)}
-                  >
-                    💾 Save Job
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleApplyJob(selectedJob)}
-                  >
-                    🚀 Apply with AI Matching
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </div>

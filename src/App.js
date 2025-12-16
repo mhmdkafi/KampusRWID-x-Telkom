@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import JobList from "./pages/JobList/JobList";
+import JobDetail from "./pages/jobDetail/JobDetail";
 import JobMatching from "./pages/JobMatching/JobMatching";
 import AddJob from "./pages/Admin/AddJob";
 import AccuracyDashboard from "./components/AccuracyDashboard/AccuracyDashboard";
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/jobs" element={<JobList />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/matching" element={<JobMatching />} />
           <Route
             path="/admin/add-job"

@@ -103,7 +103,7 @@ const JobMatching = () => {
 
   // FIX: View Details button handler
   const handleViewJobDetails = (job) => {
-    navigate(`/jobs?id=${job.id}`);
+    navigate(`/jobs/${job.id}`);
   };
 
   const renderStepContent = () => {

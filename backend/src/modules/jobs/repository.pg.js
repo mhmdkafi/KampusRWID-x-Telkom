@@ -17,17 +17,16 @@ export class PgJobsRepository extends JobsRepository {
   }
 
   async findById(id) {
-    const { data, error } = await supabase
-      .from("jobs")
-      .select(
-        "id, title, company, location, skills, description, salary, benefits, experience_required, job_type, image_url, requirements, responsibilities, created_at, updated_at"
-      )
-      .eq("id", id)
-      .limit(1)
-      .maybeSingle();
+    // Pastikan id adalah integer
+    const jobId = parseInt(id, 10);
+    if (isNaN(jobId)) {
+      throw new Error("Invalid job ID");
+    }
 
-    if (error) throw error;
-    return data || null;
+    const result = await pool.query("SELECT * FROM jobs WHERE id = $1", [
+      jobId,
+    ]);
+    return result.rows[0] || null;
   }
 
   async bulkInsert(jobs) {
@@ -75,7 +74,8 @@ export class PgJobsRepository extends JobsRepository {
     // Ambil saved_jobs + join job detail dalam 1 query
     const { data, error } = await supabase
       .from("saved_jobs")
-      .select(`
+      .select(
+        `
         id,
         created_at,
         job:jobs (
@@ -83,16 +83,15 @@ export class PgJobsRepository extends JobsRepository {
           experience_required, job_type, image_url, requirements, responsibilities,
           created_at, updated_at
         )
-      `)
+      `
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(`getSavedJobs error: ${error.message}`);
 
     // Flatten ke array job
-    const jobs = (data || [])
-      .map((row) => row.job)
-      .filter(Boolean);
+    const jobs = (data || []).map((row) => row.job).filter(Boolean);
 
     return jobs;
   }
