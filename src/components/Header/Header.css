@@ -77,6 +77,20 @@
   width: 60%;
 }
 
+.saved-jobs-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.saved-jobs-link svg {
+  transition: transform 0.3s ease;
+}
+
+.saved-jobs-link:hover svg {
+  transform: scale(1.1);
+}
+
 /* User Menu */
 .user-menu {
   display: flex;

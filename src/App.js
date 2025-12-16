@@ -5,6 +5,7 @@ import Home from "./pages/Home/Home";
 import JobList from "./pages/JobList/JobList";
 import JobDetail from "./pages/jobDetail/JobDetail";
 import JobMatching from "./pages/JobMatching/JobMatching";
+import SavedJobs from "./pages/SavedJobs/SavedJobs"; 
 import AddJob from "./pages/Admin/AddJob";
 import AccuracyDashboard from "./components/AccuracyDashboard/AccuracyDashboard";
 import { AdminRoute } from "./components/ProtectedRoute";
@@ -20,6 +21,8 @@ function App() {
           <Route path="/jobs" element={<JobList />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/matching" element={<JobMatching />} />
+          <Route path="/saved-jobs" element={<SavedJobs />} />{" "}
+          {}
           <Route
             path="/admin/add-job"
             element={

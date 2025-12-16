@@ -1,0 +1,160 @@
+.saved-jobs-page {
+  min-height: calc(100vh - 80px);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 2rem 1rem;
+}
+
+.saved-jobs-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.saved-jobs-header {
+  margin-bottom: 2.5rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.saved-jobs-header h1 {
+  font-size: 2.5rem;
+  color: #1a202c;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bookmark-icon {
+  font-size: 2rem;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Jobs Grid */
+.saved-jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.saved-job-item {
+  position: relative;
+  transition: transform 0.3s;
+}
+
+.saved-job-item:hover {
+  transform: translateY(-4px);
+}
+
+.btn-unsave {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.btn-unsave:hover {
+  background: #fee;
+  border-color: #fcc;
+  color: #dc2626;
+  transform: scale(1.05);
+}
+
+.btn-unsave svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h2 {
+  font-size: 1.8rem;
+  color: #1a202c;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  color: #64748b;
+  margin: 0 0 2rem 0;
+}
+
+.btn-browse,
+.btn-login {
+  background: linear-gradient(135deg, #22543d 0%, #2f855a 100%);
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(34, 84, 61, 0.3);
+}
+
+.btn-browse:hover,
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 84, 61, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .saved-jobs-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .saved-jobs-header {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .saved-jobs-header h1 {
+    font-size: 2rem;
+  }
+
+  .saved-jobs-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .btn-unsave {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+  }
+}
