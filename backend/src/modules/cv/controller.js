@@ -1,61 +1,71 @@
 import { authGuard } from "../../config/supabaseAuth.js";
 import { SupabaseStorage } from "../../infrastructure/storage/supabaseStorage.js";
 import { PgJobsRepository } from "../jobs/repository.pg.js";
+import { CVRepository } from "./repository.js";
 import { HttpMLProvider } from "../../infrastructure/ml/httpMLProvider.js";
 import { MockMLProvider } from "../../infrastructure/ml/mockMLProvider.js";
 import { env } from "../../config/env.js";
 
 const storage = new SupabaseStorage(env.STORAGE_BUCKET);
 const jobsRepo = new PgJobsRepository();
+const cvRepo = new CVRepository();
 const ml = env.ML_ENDPOINT ? new HttpMLProvider({}) : new MockMLProvider();
 
 export const uploadAndMatch = [
-  authGuard(), // preHandler dipakai di routes
+  authGuard(),
   async function handler(request, reply) {
     const file = await request.file();
-    if (!file)
-      return reply.code(400).send({ message: "File PDF wajib di-upload" });
-    if (file.mimetype !== "application/pdf") {
-      return reply.code(400).send({ message: "Hanya PDF yang didukung" });
+    if (!file) return reply.code(400).send({ message: "File wajib di-upload" });
+
+    const userId = request.user?.sub || request.user?.id;
+    if (!userId) {
+      return reply.code(401).send({ message: "User ID tidak ditemukan" });
     }
 
-    const userId = request.user?.sub || "anonymous";
     const safeName = file.filename.replace(/\s+/g, "_");
     const path = `${userId}/${Date.now()}-${safeName}`;
 
-    // 1) Upload ke Supabase Storage
-    const storagePath = await storage.upload(file.file, {
-      path,
-      contentType: file.mimetype,
-    });
+    try {
+      // 1) Upload ke Supabase Storage
+      const storagePath = await storage.upload(file.file, {
+        path,
+        contentType: file.mimetype,
+      });
 
-    // 2) Dapatkan URL (pakai public bucket ATAU signed URL)
-    let cvUrl = storage.getPublicUrl(storagePath);
-    if (!cvUrl) {
-      cvUrl = await storage.createSignedUrl(storagePath, 3600);
+      // 2) Simpan record CV ke database (replace jika sudah ada)
+      const cvRecord = await cvRepo.saveCVRecord(
+        userId,
+        file.filename,
+        storagePath,
+        null // text_content bisa diisi nanti setelah parsing PDF
+      );
+
+      console.log(`✅ CV saved to DB for user ${userId}:`, cvRecord.id);
+
+      // 3) Dapatkan URL
+      let cvUrl = storage.getPublicUrl(storagePath);
+      if (!cvUrl) {
+        cvUrl = await storage.createSignedUrl(storagePath, 3600);
+      }
+
+      // 4) Ambil jobs dari DB
+      const jobs = await jobsRepo.listAll({ limit: 200, offset: 0 });
+
+      // 5) Return success (matching akan dilakukan di frontend)
+      return reply.send({
+        success: true,
+        cv_id: cvRecord.id,
+        storage_path: storagePath,
+        cv_url: cvUrl,
+        filename: file.filename,
+        jobs_count: jobs.length,
+      });
+    } catch (error) {
+      console.error("❌ Upload CV Error:", error);
+      return reply.code(500).send({
+        message: "Failed to upload CV",
+        error: error.message,
+      });
     }
-
-    // 3) Ambil daftar jobs dari DB
-    const jobs = await jobsRepo.listAll({ limit: 200, offset: 0 });
-
-    // 4) Panggil ML service (atau Mock bila belum dikonfigurasi)
-    const result = await (ml.analyzeAndMatch
-      ? ml.analyzeAndMatch({ cvUrl, jobs })
-      : (async () => {
-          // fallback untuk Mock: analisa teks tidak tersedia karena kita tidak parse PDF di backend
-          // gunakan skills dari job untuk skor dummy saja
-          return {
-            matches: jobs.map((j) => ({ job_id: j.id, score: Math.random() })),
-          };
-        })());
-
-    // 5) (Opsional) simpan ke DB tabel cvs/matches — nanti kita tambahkan repository-nya
-    return reply.send({
-      storage_path: storagePath,
-      cv_url: cvUrl,
-      matches: result.matches || [],
-      // result.skills / embedding jika disediakan ML juga ikut diteruskan
-      skills: result.skills || undefined,
-    });
   },
 ];

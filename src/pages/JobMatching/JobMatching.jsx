@@ -7,7 +7,7 @@ import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import { cvAnalyzer } from "../../services/ml/cvAnalyzer";
 import { matchCalculator } from "../../services/ml/matchCalculator";
-import { getJobs } from "../../services/api/matchingAPI"; // TAMBAH INI
+import { getJobs, uploadCVAndMatch } from "../../services/api/matchingAPI"; // UPDATE
 import "./JobMatching.css";
 
 const JobMatching = () => {
@@ -36,6 +36,12 @@ const JobMatching = () => {
     setCvFile(file);
 
     try {
+      // 1. Upload CV ke backend (simpan ke DB + Storage)
+      console.log("📤 Uploading CV to server...");
+      const uploadResult = await uploadCVAndMatch(file);
+      console.log("✅ CV uploaded to server:", uploadResult);
+
+      // 2. Analisis CV di frontend
       console.log("📄 Analyzing CV...");
       const analysis = await cvAnalyzer.analyzeCV(file);
       console.log("✅ CV Analysis Complete:", analysis);
@@ -43,8 +49,8 @@ const JobMatching = () => {
       setAnalysisResults(analysis);
       setCurrentStep(2);
     } catch (error) {
-      console.error("❌ CV Analysis Error:", error);
-      alert("Failed to analyze CV. Please try again.");
+      console.error("❌ CV Upload/Analysis Error:", error);
+      alert(`Failed to process CV: ${error.message}`);
       setCurrentStep(1);
     } finally {
       setIsLoading(false);
@@ -52,7 +58,6 @@ const JobMatching = () => {
   };
 
   const handleAnalysisComplete = async () => {
-    // PERBAIKAN: Fetch jobs dari database
     console.log("🎯 Starting Job Matching...");
     setIsLoading(true);
 
@@ -68,7 +73,7 @@ const JobMatching = () => {
         return;
       }
 
-      // Calculate matches dengan jobsList dari database
+      // Calculate matches
       const matches = matchCalculator.calculateMatches(
         analysisResults,
         jobsList
@@ -94,6 +99,11 @@ const JobMatching = () => {
 
   const handleViewAllJobs = () => {
     navigate("/jobs");
+  };
+
+  // FIX: View Details button handler
+  const handleViewJobDetails = (job) => {
+    navigate(`/jobs?id=${job.id}`);
   };
 
   const renderStepContent = () => {
@@ -300,6 +310,7 @@ const JobMatching = () => {
                       {/* Job Actions - HAPUS SAVE JOB */}
                       <div className="job-actions mt-3">
                         <button
+                          onClick={() => handleViewJobDetails(job)} // FIXED
                           className="btn btn-sm"
                           style={{
                             background: "#22543d",

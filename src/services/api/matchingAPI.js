@@ -1,22 +1,40 @@
+// matchingAPI.js - PERBAIKAN getAuthToken()
+
+import { supabase } from "../../config/supabase";
+
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || "http://127.0.0.1:4000/api";
 
-// Helper untuk ambil token dari Supabase localStorage
-function getAuthToken() {
-  // Cari key yang match dengan pattern Supabase auth token
-  const keys = Object.keys(localStorage);
-  const authKey = keys.find((key) => key.includes("auth-token"));
-
-  if (!authKey) {
-    console.warn("No Supabase auth token found in localStorage");
-    return null;
-  }
-
+// PERBAIKAN: Helper untuk ambil token dari Supabase menggunakan getSession()
+async function getAuthToken() {
   try {
-    const authData = JSON.parse(localStorage.getItem(authKey) || "{}");
-    return authData.access_token || null;
+    console.log("🔍 Attempting to get session...");
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    console.log("📋 Session data:", {
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      error: error?.message,
+    });
+
+    if (error) {
+      console.error("❌ Error getting session:", error);
+      return null;
+    }
+
+    if (!session || !session.access_token) {
+      console.warn("⚠️ No active session or access token");
+      console.log("💡 Please login first!");
+      return null;
+    }
+
+    console.log("✅ Token retrieved successfully");
+    return session.access_token;
   } catch (err) {
-    console.error("Error parsing auth token:", err);
+    console.error("❌ Error getting auth token:", err);
     return null;
   }
 }
@@ -41,7 +59,7 @@ export async function getJobById(id) {
 }
 
 export async function createJob(jobData) {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
 
   const res = await fetch(`${API_BASE_URL}/jobs`, {
     method: "POST",
@@ -61,7 +79,7 @@ export async function createJob(jobData) {
 }
 
 export async function updateJob(id, jobData) {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
 
   const res = await fetch(`${API_BASE_URL}/jobs/${id}`, {
     method: "PUT",
@@ -81,7 +99,7 @@ export async function updateJob(id, jobData) {
 }
 
 export async function deleteJob(id) {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
 
   const res = await fetch(`${API_BASE_URL}/jobs/${id}`, {
     method: "DELETE",
@@ -100,7 +118,7 @@ export async function deleteJob(id) {
 
 // Saved Jobs API
 export async function saveJob(jobId) {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
   if (!token) throw new Error("Anda belum login");
 
   const res = await fetch(`${API_BASE_URL}/jobs/save`, {
@@ -121,7 +139,7 @@ export async function saveJob(jobId) {
 }
 
 export async function unsaveJob(jobId) {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
   if (!token) throw new Error("Anda belum login");
 
   const res = await fetch(`${API_BASE_URL}/jobs/save/${jobId}`, {
@@ -140,7 +158,7 @@ export async function unsaveJob(jobId) {
 }
 
 export async function getSavedJobs() {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
   if (!token) throw new Error("Anda belum login");
 
   const res = await fetch(`${API_BASE_URL}/jobs/saved/all`, {
@@ -158,11 +176,16 @@ export async function getSavedJobs() {
   return data.jobs || [];
 }
 
-// CV Upload API
+// CV Upload API - PERBAIKAN
 export async function uploadCVAndMatch(file) {
-  const token = getAuthToken();
-  if (!token) throw new Error("Anda belum login");
+  console.log("🔐 Getting authentication token...");
+  const token = await getAuthToken(); // TAMBAH AWAIT
 
+  if (!token) {
+    throw new Error("Anda belum login. Silakan login terlebih dahulu.");
+  }
+
+  console.log("📤 Uploading CV with valid token...");
   const formData = new FormData();
   formData.append("file", file);
 
@@ -176,14 +199,17 @@ export async function uploadCVAndMatch(file) {
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
+    console.error("❌ Upload failed:", res.status, errText);
     throw new Error(`Upload gagal: ${res.status} ${errText}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log("✅ CV uploaded successfully");
+  return result;
 }
 
 export async function getUserInfo() {
-  const token = getAuthToken();
+  const token = await getAuthToken(); // TAMBAH AWAIT
   if (!token) {
     throw new Error("Token tidak ditemukan. Silakan login kembali.");
   }

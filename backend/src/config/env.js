@@ -9,6 +9,7 @@ export const env = {
 
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET, // TAMBAH INI
 
   // ML service (HTTP)
   ML_ENDPOINT: process.env.ML_ENDPOINT || "",
@@ -21,3 +22,5 @@ if (!env.DATABASE_URL) console.warn("[env] DATABASE_URL belum di-set");
 if (!env.SUPABASE_URL) console.warn("[env] SUPABASE_URL belum di-set");
 if (!env.SUPABASE_SERVICE_ROLE_KEY)
   console.warn("[env] SUPABASE_SERVICE_ROLE_KEY belum di-set");
+if (!env.SUPABASE_JWT_SECRET)
+  console.warn("[env] SUPABASE_JWT_SECRET belum di-set"); // TAMBAH INI
