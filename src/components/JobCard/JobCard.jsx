@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./JobCard.css";
 
-const JobCard = ({ job, isActive = false, onSave, onApply }) => {
+const JobCard = ({ job, isActive = false, onApply }) => {
   const [imageError, setImageError] = useState(false);
 
   const getCompanyInitial = (company) => {
@@ -141,23 +141,6 @@ const JobCard = ({ job, isActive = false, onSave, onApply }) => {
             }}
           >
             Apply Now
-          </button>
-          <button
-            className="btn-save"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onSave) onSave(job);
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M19 21L12 16L5 21V5C5 3.89 5.89 3 7 3H17C18.11 3 19 3.89 19 5V21Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill={job.is_saved ? "currentColor" : "none"}
-              />
-            </svg>
-            Save
           </button>
         </div>
       </div>

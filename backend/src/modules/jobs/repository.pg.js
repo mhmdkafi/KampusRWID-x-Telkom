@@ -1,5 +1,5 @@
 import { supabase } from "../../config/supabase.js";
-import { pool, withTransaction } from "../../config/db.js";
+import { pool } from "../../config/db.js";
 import { JobsRepository } from "./repository.js";
 
 export class PgJobsRepository extends JobsRepository {
@@ -23,10 +23,15 @@ export class PgJobsRepository extends JobsRepository {
       throw new Error("Invalid job ID");
     }
 
-    const result = await pool.query("SELECT * FROM jobs WHERE id = $1", [
-      jobId,
-    ]);
-    return result.rows[0] || null;
+    // GUNAKAN SUPABASE UNTUK MENGHINDARI CONNECTION LEAK
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("id", jobId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
   }
 
   async bulkInsert(jobs) {
@@ -96,23 +101,26 @@ export class PgJobsRepository extends JobsRepository {
     return jobs;
   }
 
+  // FIX: Hapus duplicate, gunakan Supabase untuk konsistensi
   async isSaved(userId, jobId) {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("job_id", jobId)
-      .limit(1);
+    try {
+      const { data, error } = await supabase
+        .from("saved_jobs")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("job_id", jobId)
+        .limit(1)
+        .maybeSingle();
 
-    if (error) throw new Error(`isSaved error: ${error.message}`);
-    return Array.isArray(data) && data.length > 0;
-  }
+      if (error && error.code !== "PGRST116") {
+        console.error("isSaved error:", error);
+        return false; // Return false instead of throwing
+      }
 
-  async isSaved(userId, jobId) {
-    const { rows } = await pool.query(
-      "SELECT EXISTS(SELECT 1 FROM saved_jobs WHERE user_id = $1 AND job_id = $2) as is_saved",
-      [userId, jobId]
-    );
-    return rows[0]?.is_saved || false;
+      return !!data;
+    } catch (error) {
+      console.error("isSaved catch error:", error);
+      return false; // Return false on any error
+    }
   }
 }

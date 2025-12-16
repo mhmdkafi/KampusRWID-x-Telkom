@@ -118,7 +118,9 @@ export async function deleteJob(id) {
 
 // Saved Jobs API
 export async function saveJob(jobId) {
-  const token = await getAuthToken(); // TAMBAH AWAIT
+  console.log("💾 Attempting to save job:", jobId);
+
+  const token = await getAuthToken();
   if (!token) throw new Error("Anda belum login");
 
   const res = await fetch(`${API_BASE_URL}/jobs/save`, {
@@ -135,26 +137,45 @@ export async function saveJob(jobId) {
     throw new Error(`Gagal save job: ${res.status} ${errText}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log("✅ Job saved successfully:", result);
+  return result;
 }
 
 export async function unsaveJob(jobId) {
-  const token = await getAuthToken(); // TAMBAH AWAIT
-  if (!token) throw new Error("Anda belum login");
+  console.log("🗑️ Attempting to unsave job:", jobId);
+
+  const token = await getAuthToken();
+
+  if (!token) {
+    console.error("❌ No auth token found");
+    throw new Error("Anda belum login");
+  }
+
+  console.log(
+    "✅ Token retrieved, sending DELETE request to:",
+    `${API_BASE_URL}/jobs/save/${jobId}`
+  );
 
   const res = await fetch(`${API_BASE_URL}/jobs/save/${jobId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
+      // HAPUS Content-Type karena DELETE tidak punya body
     },
   });
 
+  console.log("📡 Unsave response status:", res.status);
+
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
+    console.error("❌ Unsave failed:", res.status, errText);
     throw new Error(`Gagal unsave job: ${res.status} ${errText}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log("✅ Job unsaved successfully:", result);
+  return result;
 }
 
 export async function getSavedJobs() {

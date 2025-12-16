@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getJobById, saveJob, unsaveJob } from "../../services/api/matchingAPI";
+import {
+  getJobById,
+  saveJob,
+  unsaveJob,
+  getSavedJobs,
+} from "../../services/api/matchingAPI";
 import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import "./JobDetail.css";
@@ -15,6 +20,7 @@ const JobDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // ADD: Loading state
 
   useEffect(() => {
     fetchJobDetail();
@@ -25,11 +31,39 @@ const JobDetail = () => {
       setIsLoading(true);
       const jobData = await getJobById(id);
       setJob(jobData);
-      setIsSaved(jobData.is_saved || false);
+
+      // Check if job is saved (only if user is logged in)
+      if (user) {
+        const savedStatus = await checkIfJobIsSaved(id);
+        setIsSaved(savedStatus);
+      } else {
+        setIsSaved(false);
+      }
     } catch (error) {
       console.error("Error fetching job:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add effect to check saved status when user changes
+  useEffect(() => {
+    if (user && job) {
+      checkIfJobIsSaved(id).then(setIsSaved);
+    } else {
+      setIsSaved(false);
+    }
+  }, [user, id, job]);
+
+  const checkIfJobIsSaved = async (jobId) => {
+    if (!user) return false;
+
+    try {
+      const savedJobs = await getSavedJobs();
+      return savedJobs.some((j) => j.id === parseInt(jobId));
+    } catch (error) {
+      console.error("Error checking saved status:", error);
+      return false;
     }
   };
 
@@ -39,17 +73,31 @@ const JobDetail = () => {
       return;
     }
 
+    // Prevent double click
+    if (isSaving) {
+      console.log("⏳ Already processing save/unsave request");
+      return;
+    }
+
+    setIsSaving(true);
+
     try {
       if (isSaved) {
+        console.log("🗑️ Unsaving job:", job.id);
         await unsaveJob(job.id);
         setIsSaved(false);
+        console.log("✅ Job unsaved successfully");
       } else {
+        console.log("💾 Saving job:", job.id);
         await saveJob(job.id);
         setIsSaved(true);
+        console.log("✅ Job saved successfully");
       }
     } catch (error) {
-      console.error("Error saving job:", error);
-      alert("Failed to save job");
+      console.error("❌ Error toggling save:", error);
+      alert(`Failed to ${isSaved ? "unsave" : "save"} job: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -84,7 +132,9 @@ const JobDetail = () => {
 
   const skills = Array.isArray(job.skills) ? job.skills : [];
   const requirements = Array.isArray(job.requirements) ? job.requirements : [];
-  const responsibilities = Array.isArray(job.responsibilities) ? job.responsibilities : [];
+  const responsibilities = Array.isArray(job.responsibilities)
+    ? job.responsibilities
+    : [];
   const benefits = Array.isArray(job.benefits) ? job.benefits : [];
 
   return (
@@ -118,27 +168,77 @@ const JobDetail = () => {
                 <div className="job-meta">
                   {job.location && (
                     <span className="meta-item">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 10C21 17 12 23 12 23S3 17 3 10C3 5.58 6.58 2 12 2S21 5.58 21 10Z" stroke="currentColor" strokeWidth="2" />
-                        <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          d="M21 10C21 17 12 23 12 23S3 17 3 10C3 5.58 6.58 2 12 2S21 5.58 21 10Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <circle
+                          cx="12"
+                          cy="10"
+                          r="3"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
                       </svg>
                       {job.location}
                     </span>
                   )}
                   {job.job_type && (
                     <span className="meta-item">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-                        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <rect
+                          x="3"
+                          y="4"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <line
+                          x1="3"
+                          y1="10"
+                          x2="21"
+                          y2="10"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
                       </svg>
                       {job.job_type}
                     </span>
                   )}
                   {job.experience_required && (
                     <span className="meta-item">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                        <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M12 6V12L16 14"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
                       </svg>
                       {job.experience_required}
                     </span>
@@ -150,8 +250,11 @@ const JobDetail = () => {
 
           <div className="header-actions">
             <button
-              className={`btn-save-large ${isSaved ? "saved" : ""}`}
+              className={`btn-save-large ${isSaved ? "saved" : ""} ${
+                isSaving ? "loading" : ""
+              }`}
               onClick={handleSaveJob}
+              disabled={isSaving}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path
@@ -161,7 +264,7 @@ const JobDetail = () => {
                   fill={isSaved ? "currentColor" : "none"}
                 />
               </svg>
-              {isSaved ? "Saved" : "Save Job"}
+              {isSaving ? "..." : isSaved ? "Saved" : "Save Job"}
             </button>
             <button className="btn-apply-large" onClick={handleApply}>
               Apply Now
@@ -177,8 +280,18 @@ const JobDetail = () => {
               <div className="salary-section">
                 <div className="salary-badge">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                    <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M12 6V12L16 14"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
                   </svg>
                   <div>
                     <span className="salary-label">Salary</span>
@@ -241,9 +354,24 @@ const JobDetail = () => {
                 <ul className="benefits-list">
                   {benefits.map((benefit, index) => (
                     <li key={index}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="#22543d" strokeWidth="2" />
-                        <path d="M8 12L11 15L16 9" stroke="#22543d" strokeWidth="2" />
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="#22543d"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M8 12L11 15L16 9"
+                          stroke="#22543d"
+                          strokeWidth="2"
+                        />
                       </svg>
                       {benefit}
                     </li>
@@ -288,8 +416,16 @@ const JobDetail = () => {
               <div className="share-buttons">
                 <button className="share-btn" title="Copy Link">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="2" />
+                    <path
+                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
                   </svg>
                   Copy Link
                 </button>

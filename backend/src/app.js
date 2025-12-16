@@ -13,7 +13,17 @@ export function buildApp() {
   const app = Fastify({ logger: true });
 
   app.setErrorHandler(httpErrorHandler);
-  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true });
+
+  app.register(cors, {
+    origin: env.FRONTEND_ORIGIN || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    exposedHeaders: ["Content-Type", "Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
+
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
   app.register(healthRoutes);

@@ -151,20 +151,12 @@ const JobList = () => {
     setIsAuthModalOpen(false);
   };
 
-  const handleSaveJob = (job) => {
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
-    alert(`Job "${job.title}" saved to your favorites!`);
-  };
-
   const handleApplyJob = (job) => {
     if (!isAuthenticated) {
       openAuthModal();
       return;
     }
-    navigate("/matching");
+    alert(`Apply to ${job.title} at ${job.company}`);
   };
 
   const clearFilters = () => {
@@ -296,7 +288,7 @@ const JobList = () => {
                     <div key={index} onClick={() => handleViewJobDetails(job)}>
                       <JobCard
                         job={job}
-                        onSave={handleSaveJob}
+                        isActive={false}
                         onApply={handleApplyJob}
                       />
                     </div>
