@@ -8,15 +8,21 @@ export const getJobs = async (request, reply) => {
   const { user_id } = request.query;
   const jobs = await listJobs();
 
-  // If user_id provided, check which jobs are saved
   if (user_id) {
-    const jobsWithSaveStatus = await Promise.all(
-      jobs.map(async (job) => ({
-        ...job,
-        is_saved: await jobsRepo.isSaved(user_id, job.id),
-      }))
-    );
-    return { jobs: jobsWithSaveStatus };
+    try {
+      // flagkan saved di masing-masing job
+      const flagged = await Promise.all(
+        jobs.map(async (job) => {
+          const saved = await jobsRepo.isSaved(user_id, job.id);
+          return { ...job, is_saved: saved };
+        })
+      );
+      return { jobs: flagged };
+    } catch (err) {
+      // Jangan blokir daftar jobs; log saja
+      request.log.warn({ err }, "isSaved check failed");
+      return { jobs };
+    }
   }
 
   return { jobs };

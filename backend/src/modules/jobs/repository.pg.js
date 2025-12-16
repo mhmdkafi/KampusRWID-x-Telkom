@@ -1,126 +1,112 @@
+import { supabase } from "../../config/supabase.js";
 import { pool, withTransaction } from "../../config/db.js";
 import { JobsRepository } from "./repository.js";
 
 export class PgJobsRepository extends JobsRepository {
   async listAll({ limit = 50, offset = 0 } = {}) {
-    const { rows } = await pool.query(
-      `SELECT 
-        id, title, company, location, skills, description,
-        salary, benefits, experience_required, job_type, image_url,
-        requirements, responsibilities, created_at, updated_at
-      FROM jobs 
-      ORDER BY created_at DESC 
-      LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
-    return rows;
+    const { data, error } = await supabase
+      .from("jobs")
+      .select(
+        "id, title, company, location, skills, description, salary, benefits, experience_required, job_type, image_url, requirements, responsibilities, created_at, updated_at"
+      )
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return data || [];
   }
 
   async findById(id) {
-    const { rows } = await pool.query(
-      `SELECT 
-        id, title, company, location, skills, description,
-        salary, benefits, experience_required, job_type, image_url,
-        requirements, responsibilities, created_at, updated_at
-      FROM jobs 
-      WHERE id = $1`,
-      [id]
-    );
-    return rows[0] || null;
+    const { data, error } = await supabase
+      .from("jobs")
+      .select(
+        "id, title, company, location, skills, description, salary, benefits, experience_required, job_type, image_url, requirements, responsibilities, created_at, updated_at"
+      )
+      .eq("id", id)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
   }
 
   async bulkInsert(jobs) {
-    return withTransaction(async (client) => {
-      const text = `
-        INSERT INTO jobs (
-          title, company, location, skills, description,
-          salary, benefits, experience_required, job_type, image_url,
-          requirements, responsibilities
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-      `;
-      await Promise.all(
-        jobs.map((j) =>
-          client.query(text, [
-            j.title,
-            j.company,
-            j.location ?? null,
-            j.skills ?? [],
-            j.description ?? null,
-            j.salary ?? null,
-            j.benefits ?? [],
-            j.experience_required ?? null,
-            j.job_type ?? "Full-time",
-            j.image_url ?? null,
-            j.requirements ?? [],
-            j.responsibilities ?? [],
-          ])
-        )
-      );
-    });
+    const { error } = await supabase.from("jobs").insert(jobs);
+    if (error) throw error;
   }
 
   async update(id, jobData) {
-    const fields = [];
-    const values = [];
-    let paramCount = 1;
-
-    Object.keys(jobData).forEach((key) => {
-      if (jobData[key] !== undefined) {
-        fields.push(`${key} = $${paramCount}`);
-        values.push(jobData[key]);
-        paramCount++;
-      }
-    });
-
-    values.push(id);
-
-    const { rows } = await pool.query(
-      `UPDATE jobs SET ${fields.join(
-        ", "
-      )} WHERE id = $${paramCount} RETURNING *`,
-      values
-    );
-
-    return rows[0];
+    const { data, error } = await supabase
+      .from("jobs")
+      .update(jobData)
+      .eq("id", id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
   }
 
   async delete(id) {
-    await pool.query("DELETE FROM jobs WHERE id = $1", [id]);
+    const { error } = await supabase.from("jobs").delete().eq("id", id);
+    if (error) throw error;
   }
 
   // Saved Jobs Methods
   async saveJob(userId, jobId) {
-    const { rows } = await pool.query(
-      `INSERT INTO saved_jobs (user_id, job_id) 
-       VALUES ($1, $2) 
-       ON CONFLICT (user_id, job_id) DO NOTHING
-       RETURNING *`,
-      [userId, jobId]
-    );
-    return rows[0];
+    const { data, error } = await supabase
+      .from("saved_jobs")
+      .insert({ user_id: userId, job_id: jobId })
+      .select()
+      .maybeSingle();
+    if (error && error.code !== "23505") throw error; // ignore unique violation
+    return data || { user_id: userId, job_id: jobId };
   }
 
   async unsaveJob(userId, jobId) {
-    await pool.query(
-      "DELETE FROM saved_jobs WHERE user_id = $1 AND job_id = $2",
-      [userId, jobId]
-    );
+    const { error } = await supabase
+      .from("saved_jobs")
+      .delete()
+      .eq("user_id", userId)
+      .eq("job_id", jobId);
+    if (error) throw error;
   }
 
   async getSavedJobs(userId) {
-    const { rows } = await pool.query(
-      `SELECT 
-        j.id, j.title, j.company, j.location, j.skills, j.description,
-        j.salary, j.benefits, j.experience_required, j.job_type, j.image_url,
-        j.requirements, j.responsibilities, j.created_at, j.updated_at,
-        s.created_at as saved_at
-      FROM saved_jobs s
-      JOIN jobs j ON s.job_id = j.id
-      WHERE s.user_id = $1
-      ORDER BY s.created_at DESC`,
-      [userId]
-    );
-    return rows;
+    // Ambil saved_jobs + join job detail dalam 1 query
+    const { data, error } = await supabase
+      .from("saved_jobs")
+      .select(`
+        id,
+        created_at,
+        job:jobs (
+          id, title, company, location, skills, description, salary, benefits,
+          experience_required, job_type, image_url, requirements, responsibilities,
+          created_at, updated_at
+        )
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw new Error(`getSavedJobs error: ${error.message}`);
+
+    // Flatten ke array job
+    const jobs = (data || [])
+      .map((row) => row.job)
+      .filter(Boolean);
+
+    return jobs;
+  }
+
+  async isSaved(userId, jobId) {
+    const { data, error } = await supabase
+      .from("saved_jobs")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("job_id", jobId)
+      .limit(1);
+
+    if (error) throw new Error(`isSaved error: ${error.message}`);
+    return Array.isArray(data) && data.length > 0;
   }
 
   async isSaved(userId, jobId) {

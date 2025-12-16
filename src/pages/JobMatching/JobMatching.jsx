@@ -7,6 +7,7 @@ import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import { cvAnalyzer } from "../../services/ml/cvAnalyzer";
 import { matchCalculator } from "../../services/ml/matchCalculator";
+import { getJobs } from "../../services/api/matchingAPI"; // TAMBAH INI
 import "./JobMatching.css";
 
 const JobMatching = () => {
@@ -14,7 +15,7 @@ const JobMatching = () => {
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [cvFile, setCvFile] = useState(null); // GANTI NAMA dari cvData ke cvFile
+  const [cvFile, setCvFile] = useState(null);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [matchResults, setMatchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +33,7 @@ const JobMatching = () => {
 
   const handleCVUpload = async (file) => {
     setIsLoading(true);
-    setCvFile(file); // Simpan file untuk CVAnalysis
+    setCvFile(file);
 
     try {
       console.log("📄 Analyzing CV...");
@@ -40,7 +41,7 @@ const JobMatching = () => {
       console.log("✅ CV Analysis Complete:", analysis);
 
       setAnalysisResults(analysis);
-      setCurrentStep(2); // Pindah ke step 2 (CV Analysis)
+      setCurrentStep(2);
     } catch (error) {
       console.error("❌ CV Analysis Error:", error);
       alert("Failed to analyze CV. Please try again.");
@@ -50,20 +51,35 @@ const JobMatching = () => {
     }
   };
 
-  const handleAnalysisComplete = () => {
-    // Fungsi ini dipanggil dari CVAnalysis setelah selesai
+  const handleAnalysisComplete = async () => {
+    // PERBAIKAN: Fetch jobs dari database
     console.log("🎯 Starting Job Matching...");
     setIsLoading(true);
 
     try {
-      const matches = matchCalculator.calculateMatches(analysisResults);
+      // Fetch jobs dari database
+      console.log("📡 Fetching jobs from database...");
+      const jobsList = await getJobs();
+      console.log(`✅ Loaded ${jobsList.length} jobs from database`);
+
+      if (jobsList.length === 0) {
+        alert("No jobs available in the database. Please add jobs first.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Calculate matches dengan jobsList dari database
+      const matches = matchCalculator.calculateMatches(
+        analysisResults,
+        jobsList
+      );
       console.log("✅ Job Matching Complete:", matches);
 
       setMatchResults(matches);
       setCurrentStep(3);
     } catch (error) {
       console.error("❌ Job Matching Error:", error);
-      alert("Failed to match jobs. Please try again.");
+      alert(`Failed to match jobs: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
