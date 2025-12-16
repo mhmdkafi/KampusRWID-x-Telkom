@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
@@ -8,11 +8,11 @@ import "./JobList.css";
 
 const JobList = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [jobs, setJobs] = useState([]);
-  const [filteredJobs, setFilteredJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -26,26 +26,106 @@ const JobList = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const isAuthenticated = !!user;
-  // Load jobs data
+
+  // OPTIMASI 1: Load jobs hanya sekali, bukan setiap user berubah
   useEffect(() => {
+    let isMounted = true;
+
     const loadJobs = async () => {
       setIsLoading(true);
       try {
+        console.time("⏱️ Jobs fetch");
         const jobsFromDB = await getJobs(user?.id);
-        setJobs(jobsFromDB);
+        console.timeEnd("⏱️ Jobs fetch");
+
+        if (isMounted) {
+          setJobs(jobsFromDB);
+        }
       } catch (error) {
         console.error("Error loading jobs:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+
     loadJobs();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Hapus dependency user
+
+  // OPTIMASI 2: Gunakan useMemo untuk filtering (hanya kalkulasi ulang saat dependencies berubah)
+  const filteredJobs = useMemo(() => {
+    console.time("⏱️ Filter jobs");
+    let result = jobs;
+
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      result = result.filter(
+        (job) =>
+          job.title?.toLowerCase().includes(searchLower) ||
+          job.company?.toLowerCase().includes(searchLower) ||
+          job.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (locationFilter) {
+      result = result.filter((job) => job.location === locationFilter);
+    }
+
+    if (companyFilter) {
+      result = result.filter((job) => job.company === companyFilter);
+    }
+
+    // Sorting
+    switch (sortBy) {
+      case "salary-high":
+        result = [...result].sort(
+          (a, b) => (b.salaryRange || 0) - (a.salaryRange || 0)
+        );
+        break;
+      case "salary-low":
+        result = [...result].sort(
+          (a, b) => (a.salaryRange || 0) - (b.salaryRange || 0)
+        );
+        break;
+      case "match-score":
+        result = [...result].sort(
+          (a, b) => (b.matchScore || 0) - (a.matchScore || 0)
+        );
+        break;
+      case "recent":
+        result = [...result].sort(
+          (a, b) => new Date(b.posted || 0) - new Date(a.posted || 0)
+        );
+        break;
+      default:
+        break;
+    }
+
+    console.timeEnd("⏱️ Filter jobs");
+    return result;
+  }, [jobs, searchTerm, locationFilter, companyFilter, sortBy]);
+
+  // OPTIMASI 3: Memoize unique values
+  const uniqueLocations = useMemo(
+    () => [...new Set(jobs.map((job) => job.location))].filter(Boolean),
+    [jobs]
+  );
+
+  const uniqueCompanies = useMemo(
+    () => [...new Set(jobs.map((job) => job.company))].filter(Boolean),
+    [jobs]
+  );
 
   const handleViewJobDetails = useCallback((job) => {
     setIsLoadingDetail(true);
     setShowDetail(true);
 
+    // OPTIMASI 4: Kurangi setTimeout delay dari 300ms ke 100ms
     setTimeout(() => {
       setSelectedJob({
         ...job,
@@ -91,66 +171,24 @@ const JobList = () => {
         ],
       });
       setIsLoadingDetail(false);
-    }, 300);
+    }, 100); // Kurangi dari 300ms
   }, []);
 
-  // Check if there's a job ID in URL params
+  // Check URL params for job detail
   useEffect(() => {
-    if (id && jobs.length > 0) {
-      const job = jobs.find((j) => j.id === parseInt(id));
+    const jobIdFromUrl = searchParams.get("id");
+    if (jobIdFromUrl && jobs.length > 0 && !selectedJob) {
+      const job = jobs.find((j) => j.id === parseInt(jobIdFromUrl));
       if (job) {
         handleViewJobDetails(job);
       }
     }
-  }, [id, jobs, handleViewJobDetails]);
+  }, [searchParams, jobs, selectedJob, handleViewJobDetails]);
 
-  // Filter and search jobs
+  // Reset to page 1 when filters change
   useEffect(() => {
-    let result = jobs;
-
-    if (searchTerm) {
-      result = result.filter(
-        (job) =>
-          job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (locationFilter) {
-      result = result.filter((job) => job.location === locationFilter);
-    }
-
-    if (companyFilter) {
-      result = result.filter((job) => job.company === companyFilter);
-    }
-
-    switch (sortBy) {
-      case "salary-high":
-        result = [...result].sort(
-          (a, b) => (b.salaryRange || 0) - (a.salaryRange || 0)
-        );
-        break;
-      case "salary-low":
-        result = [...result].sort(
-          (a, b) => (a.salaryRange || 0) - (b.salaryRange || 0)
-        );
-        break;
-      case "match-score":
-        result = [...result].sort((a, b) => b.matchScore - a.matchScore);
-        break;
-      case "recent":
-        result = [...result].sort(
-          (a, b) => new Date(b.posted) - new Date(a.posted)
-        );
-        break;
-      default:
-        break;
-    }
-
-    setFilteredJobs(result);
     setCurrentPage(1);
-  }, [jobs, searchTerm, locationFilter, companyFilter, sortBy]);
+  }, [searchTerm, locationFilter, companyFilter, sortBy]);
 
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
@@ -171,7 +209,6 @@ const JobList = () => {
       openAuthModal();
       return;
     }
-
     alert(`Job "${job.title}" saved to your favorites!`);
   };
 
@@ -180,7 +217,6 @@ const JobList = () => {
       openAuthModal();
       return;
     }
-
     navigate("/matching");
   };
 
@@ -190,10 +226,6 @@ const JobList = () => {
     setCompanyFilter("");
     setSortBy("relevance");
   };
-
-  // Get unique locations and companies for filters
-  const uniqueLocations = [...new Set(jobs.map((job) => job.location))];
-  const uniqueCompanies = [...new Set(jobs.map((job) => job.company))];
 
   // Pagination
   const indexOfLastJob = currentPage * jobsPerPage;
