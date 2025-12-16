@@ -6,7 +6,7 @@ import { httpErrorHandler } from "./core/httpErrorHandler.js";
 
 import { healthRoutes } from "./modules/health/routes.js";
 import { authRoutes } from "./modules/auth/routes.js";
-import { jobsRoutes } from "./modules/jobs/routes.js";
+import jobsRoutes from "./modules/jobs/routes.js";
 import { cvRoutes } from "./modules/cv/routes.js";
 
 export function buildApp() {
