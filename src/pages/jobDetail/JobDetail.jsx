@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   getJobById,
@@ -13,20 +13,15 @@ import "./JobDetail.css";
 
 const JobDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // ADD: Loading state
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    fetchJobDetail();
-  }, [id]);
-
-  const fetchJobDetail = async () => {
+  const fetchJobDetail = useCallback(async () => {
     try {
       setIsLoading(true);
       const jobData = await getJobById(id);
@@ -34,7 +29,8 @@ const JobDetail = () => {
 
       // Check if job is saved (only if user is logged in)
       if (user) {
-        const savedStatus = await checkIfJobIsSaved(id);
+        const savedJobs = await getSavedJobs();
+        const savedStatus = savedJobs.some((j) => j.id === parseInt(id));
         setIsSaved(savedStatus);
       } else {
         setIsSaved(false);
@@ -44,7 +40,26 @@ const JobDetail = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id, user]);
+
+  useEffect(() => {
+    fetchJobDetail();
+  }, [fetchJobDetail]);
+
+  const checkIfJobIsSaved = useCallback(
+    async (jobId) => {
+      if (!user) return false;
+
+      try {
+        const savedJobs = await getSavedJobs();
+        return savedJobs.some((j) => j.id === parseInt(jobId));
+      } catch (error) {
+        console.error("Error checking saved status:", error);
+        return false;
+      }
+    },
+    [user]
+  );
 
   // Add effect to check saved status when user changes
   useEffect(() => {
@@ -53,19 +68,7 @@ const JobDetail = () => {
     } else {
       setIsSaved(false);
     }
-  }, [user, id, job]);
-
-  const checkIfJobIsSaved = async (jobId) => {
-    if (!user) return false;
-
-    try {
-      const savedJobs = await getSavedJobs();
-      return savedJobs.some((j) => j.id === parseInt(jobId));
-    } catch (error) {
-      console.error("Error checking saved status:", error);
-      return false;
-    }
-  };
+  }, [user, id, job, checkIfJobIsSaved]);
 
   const handleSaveJob = async () => {
     if (!user) {
@@ -73,7 +76,6 @@ const JobDetail = () => {
       return;
     }
 
-    // Prevent double click
     if (isSaving) {
       console.log("⏳ Already processing save/unsave request");
       return;
@@ -106,7 +108,12 @@ const JobDetail = () => {
       setIsAuthModalOpen(true);
       return;
     }
-    alert(`Apply to ${job.title} at ${job.company}`);
+
+    if (job.application_url) {
+      window.open(job.application_url, "_blank");
+    } else {
+      alert("Link aplikasi tidak tersedia untuk lowongan ini.");
+    }
   };
 
   if (isLoading) {
@@ -138,9 +145,7 @@ const JobDetail = () => {
 
   const formatSalary = (salary) => {
     if (!salary) return null;
-    // Jika sudah ada format "Rp", return as is
     if (typeof salary === "string" && salary.includes("Rp")) return salary;
-    // Jika angka, format dengan thousand separator
     const num = Number(salary);
     if (!isNaN(num)) {
       return `Rp ${num.toLocaleString("id-ID")}`;
@@ -269,7 +274,6 @@ const JobDetail = () => {
         {/* Main Content */}
         <div className="job-detail-content">
           <div className="content-main">
-
             {/* Description */}
             {job.description && (
               <section className="detail-section">
@@ -351,9 +355,11 @@ const JobDetail = () => {
       </div>
 
       {/* Auth Modal */}
-      {isAuthModalOpen && (
-        <AuthModal onClose={() => setIsAuthModalOpen(false)} />
-      )}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode="login"
+      />
     </div>
   );
 };

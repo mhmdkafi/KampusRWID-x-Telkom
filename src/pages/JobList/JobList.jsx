@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
@@ -8,7 +8,6 @@ import JobCard from "../../components/JobCard/JobCard";
 import "./JobList.css";
 
 const JobList = () => {
-  const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -23,9 +22,7 @@ const JobList = () => {
   const [jobsPerPage] = useState(9);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const isAuthenticated = !!user;
-
-  // OPTIMASI 1: Load jobs hanya sekali, bukan setiap user berubah
+  // OPTIMASI 1: Load jobs dengan dependency user?.id
   useEffect(() => {
     let isMounted = true;
 
@@ -53,9 +50,9 @@ const JobList = () => {
     return () => {
       isMounted = false;
     };
-  }, []); // Hapus dependency user
+  }, [user?.id]); // FIX: Tambahkan user?.id sebagai dependency
 
-  // OPTIMASI 2: Gunakan useMemo untuk filtering (hanya kalkulasi ulang saat dependencies berubah)
+  // OPTIMASI 2: Gunakan useMemo untuk filtering
   const filteredJobs = useMemo(() => {
     console.time("⏱️ Filter jobs");
     let result = jobs;
@@ -121,7 +118,6 @@ const JobList = () => {
 
   const handleViewJobDetails = useCallback(
     (job) => {
-      // Navigate ke halaman detail terpisah
       navigate(`/jobs/${job.id}`);
     },
     [navigate]
@@ -143,20 +139,22 @@ const JobList = () => {
     setCurrentPage(1);
   }, [searchTerm, locationFilter, companyFilter, sortBy]);
 
-  const openAuthModal = () => {
-    setIsAuthModalOpen(true);
-  };
-
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
   };
 
   const handleApplyJob = (job) => {
-    if (!isAuthenticated) {
-      openAuthModal();
+    if (!user) {
+      setIsAuthModalOpen(true); // Langsung set state tanpa perlu openAuthModal
       return;
     }
-    alert(`Apply to ${job.title} at ${job.company}`);
+
+    // Redirect ke application URL eksternal (JobStreet, LinkedIn, dll)
+    if (job.application_url) {
+      window.open(job.application_url, "_blank");
+    } else {
+      alert("Link aplikasi tidak tersedia untuk lowongan ini.");
+    }
   };
 
   const clearFilters = () => {
@@ -351,7 +349,12 @@ const JobList = () => {
         </div>
       </div>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        initialMode="login"
+      />
     </div>
   );
 };

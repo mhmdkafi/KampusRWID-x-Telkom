@@ -66,6 +66,7 @@ export const createJob = async (request, reply) => {
     image_url,
     requirements,
     responsibilities,
+    application_url, // ADD: Tambahkan ini
   } = request.body || {};
 
   if (!title || !company) {
@@ -85,6 +86,7 @@ export const createJob = async (request, reply) => {
     image_url: image_url || null,
     requirements: Array.isArray(requirements) ? requirements : [],
     responsibilities: Array.isArray(responsibilities) ? responsibilities : [],
+    application_url: application_url || null,
   };
 
   await jobsRepo.bulkInsert([job]);

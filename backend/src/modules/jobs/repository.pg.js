@@ -7,7 +7,7 @@ export class PgJobsRepository extends JobsRepository {
     const { data, error } = await supabase
       .from("jobs")
       .select(
-        "id, title, company, location, skills, description, salary, job_type, image_url, requirements, responsibilities, created_at, updated_at"
+        "id, title, company, location, skills, description, salary, job_type, image_url, requirements, responsibilities, application_url, created_at, updated_at"
       )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -76,7 +76,6 @@ export class PgJobsRepository extends JobsRepository {
   }
 
   async getSavedJobs(userId) {
-    // Ambil saved_jobs + join job detail dalam 1 query
     const { data, error } = await supabase
       .from("saved_jobs")
       .select(
@@ -85,7 +84,7 @@ export class PgJobsRepository extends JobsRepository {
         created_at,
         job:jobs (
           id, title, company, location, skills, description, salary,
-          job_type, image_url, requirements, responsibilities,
+          job_type, image_url, requirements, responsibilities, application_url,
           created_at, updated_at
         )
       `
@@ -95,7 +94,6 @@ export class PgJobsRepository extends JobsRepository {
 
     if (error) throw new Error(`getSavedJobs error: ${error.message}`);
 
-    // Flatten ke array job
     const jobs = (data || []).map((row) => row.job).filter(Boolean);
 
     return jobs;

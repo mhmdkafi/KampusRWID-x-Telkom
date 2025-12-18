@@ -16,6 +16,7 @@ function AddJob() {
     image_url: "",
     requirements: "",
     responsibilities: "",
+    application_url: "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -54,6 +55,7 @@ function AddJob() {
         responsibilities: formData.responsibilities
           ? formData.responsibilities.split("\n").filter((r) => r.trim())
           : [],
+        application_url: formData.application_url || null,
       };
 
       await createJob(jobData);
@@ -73,6 +75,7 @@ function AddJob() {
         image_url: "",
         requirements: "",
         responsibilities: "",
+        application_url: "",
       });
 
       // Auto-hide message setelah 3 detik
@@ -245,6 +248,20 @@ function AddJob() {
           <small className="form-help">
             Tulis satu responsibility per baris
           </small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="application_url">
+            Application URL (JobStreet)
+          </label>
+          <input
+            type="url"
+            id="application_url"
+            name="application_url"
+            value={formData.application_url}
+            onChange={handleChange}
+            placeholder="https://id.jobstreet.com/id/job/..."
+          />
         </div>
 
         <button type="submit" disabled={loading} className="submit-btn">

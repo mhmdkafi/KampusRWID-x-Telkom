@@ -38,10 +38,6 @@ const JobSlider = () => {
     return () => clearInterval(interval);
   }, [isPaused, jobs.length]);
 
-  const goToSlide = (index) => {
-    setCurrentIndex(index);
-  };
-
   const goToPrevious = () => {
     setCurrentIndex(currentIndex === 0 ? jobs.length - 1 : currentIndex - 1);
   };
