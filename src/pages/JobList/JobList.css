@@ -500,6 +500,61 @@
   cursor: not-allowed;
 }
 
+/* Pagination Styling - Updated to match green theme */
+.pagination-container {
+  margin-top: 3rem;
+}
+
+.pagination-container .pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagination-container .page-item {
+  list-style: none;
+}
+
+.pagination-container .page-link {
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  color: #22543d;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.pagination-container .page-link:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #22543d;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(34, 84, 61, 0.15);
+}
+
+.pagination-container .page-item.active .page-link {
+  background: linear-gradient(135deg, #22543d 0%, #2f855a 100%);
+  color: white;
+  border-color: #22543d;
+  box-shadow: 0 4px 12px rgba(34, 84, 61, 0.3);
+}
+
+.pagination-container .page-item.disabled .page-link {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.pagination-container .page-item.disabled .page-link:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Loading and No Results */
 .loading-container,
 .no-results {
@@ -622,6 +677,69 @@
   text-align: center;
   margin-top: 20px;
   box-shadow: 0 2px 8px rgba(34, 84, 61, 0.25);
+}
+
+/* Results Count Section with Apply Button */
+.results-count-section {
+  background: linear-gradient(135deg, #f0fdf4 0%, #f7fee7 100%);
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #86efac;
+  margin-top: 20px;
+}
+
+.results-text {
+  font-size: 0.95rem;
+  color: #166534;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.results-text strong {
+  font-size: 1.5rem;
+  display: block;
+  color: #15803d;
+  margin-bottom: 4px;
+}
+
+/* Apply Filters Section - No text, just button */
+.apply-filters-section {
+  margin-top: 20px;
+}
+
+.btn-apply-filters {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #22543d 0%, #2f855a 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(34, 84, 61, 0.3);
+}
+
+.btn-apply-filters:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 84, 61, 0.4);
+  background: linear-gradient(135deg, #2f855a 0%, #38a169 100%);
+}
+
+.btn-apply-filters:active {
+  transform: translateY(0);
+}
+
+.btn-apply-filters svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 /* Responsive Design */

@@ -14,25 +14,32 @@ const JobList = () => {
 
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("");
-  const [sortBy, setSortBy] = useState("relevance");
+
+  // Temporary Filter States (not applied until Search button clicked)
+  const [searchInput, setSearchInput] = useState("");
+  const [locationInput, setLocationInput] = useState("");
+  const [companyInput, setCompanyInput] = useState("");
+  const [jobTypeInput, setJobTypeInput] = useState("");
+
+  // Applied Filter States (after Search button clicked)
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedLocation, setAppliedLocation] = useState("");
+  const [appliedCompany, setAppliedCompany] = useState("");
+  const [appliedJobType, setAppliedJobType] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [jobsPerPage] = useState(9);
+  const [jobsPerPage] = useState(5);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // OPTIMASI 1: Load jobs dengan dependency user?.id
+  // Load jobs
   useEffect(() => {
     let isMounted = true;
 
     const loadJobs = async () => {
       setIsLoading(true);
       try {
-        console.time("⏱️ Jobs fetch");
         const jobsFromDB = await getJobs(user?.id);
-        console.timeEnd("⏱️ Jobs fetch");
-
         if (isMounted) {
           setJobs(jobsFromDB);
         }
@@ -50,69 +57,118 @@ const JobList = () => {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]); // FIX: Tambahkan user?.id sebagai dependency
+  }, [user?.id]);
 
-  // OPTIMASI 2: Gunakan useMemo untuk filtering
+  // Apply all filters when Search button is clicked
+  const handleApplyFilters = () => {
+    setAppliedSearch(searchInput);
+    setAppliedLocation(locationInput);
+    setAppliedCompany(companyInput);
+    setAppliedJobType(jobTypeInput);
+    setCurrentPage(1);
+  };
+
+  // Handle Enter key in any input
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleApplyFilters();
+    }
+  };
+
+  // Filtering logic (uses APPLIED filters only)
   const filteredJobs = useMemo(() => {
-    console.time("⏱️ Filter jobs");
     let result = jobs;
 
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      result = result.filter(
-        (job) =>
-          job.title?.toLowerCase().includes(searchLower) ||
-          job.company?.toLowerCase().includes(searchLower) ||
-          job.description?.toLowerCase().includes(searchLower)
+    // Search filter - PRIORITIZE TITLE FIRST
+    if (appliedSearch) {
+      const searchLower = appliedSearch.toLowerCase();
+
+      // Separate into title matches and others
+      const titleMatches = [];
+      const otherMatches = [];
+
+      result.forEach((job) => {
+        const matchesTitle = job.title?.toLowerCase().includes(searchLower);
+        const matchesCompany = job.company?.toLowerCase().includes(searchLower);
+        const matchesDescription = job.description
+          ?.toLowerCase()
+          .includes(searchLower);
+
+        if (matchesTitle) {
+          titleMatches.push(job);
+        } else if (matchesCompany || matchesDescription) {
+          otherMatches.push(job);
+        }
+      });
+
+      // Title matches come first, then others
+      result = [...titleMatches, ...otherMatches];
+    }
+
+    // Location filter
+    if (appliedLocation) {
+      result = result.filter((job) =>
+        job.location?.toLowerCase().includes(appliedLocation.toLowerCase())
       );
     }
 
-    if (locationFilter) {
-      result = result.filter((job) => job.location === locationFilter);
+    // Company filter
+    if (appliedCompany) {
+      const companyLower = appliedCompany.toLowerCase();
+      result = result.filter((job) =>
+        job.company?.toLowerCase().includes(companyLower)
+      );
     }
 
-    if (companyFilter) {
-      result = result.filter((job) => job.company === companyFilter);
+    // Job Type filter
+    if (appliedJobType) {
+      result = result.filter((job) => job.job_type === appliedJobType);
     }
 
-    // Sorting
+    // Sorting - ALWAYS APPLIED
     switch (sortBy) {
-      case "salary-high":
-        result = [...result].sort(
-          (a, b) => (b.salaryRange || 0) - (a.salaryRange || 0)
-        );
-        break;
-      case "salary-low":
-        result = [...result].sort(
-          (a, b) => (a.salaryRange || 0) - (b.salaryRange || 0)
-        );
-        break;
-      case "match-score":
-        result = [...result].sort(
-          (a, b) => (b.matchScore || 0) - (a.matchScore || 0)
-        );
-        break;
       case "recent":
         result = [...result].sort(
-          (a, b) => new Date(b.posted || 0) - new Date(a.posted || 0)
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
         );
+        break;
+      case "salary-high":
+        result = [...result].sort((a, b) => {
+          const salaryA = a.salary || 0;
+          const salaryB = b.salary || 0;
+          return salaryB - salaryA;
+        });
+        break;
+      case "salary-low":
+        result = [...result].sort((a, b) => {
+          const salaryA = a.salary || 0;
+          const salaryB = b.salary || 0;
+          return salaryA - salaryB;
+        });
         break;
       default:
         break;
     }
 
-    console.timeEnd("⏱️ Filter jobs");
     return result;
-  }, [jobs, searchTerm, locationFilter, companyFilter, sortBy]);
+  }, [
+    jobs,
+    appliedSearch,
+    appliedLocation,
+    appliedCompany,
+    appliedJobType,
+    sortBy,
+  ]);
 
-  // OPTIMASI 3: Memoize unique values
+  // Memoize unique locations
   const uniqueLocations = useMemo(
     () => [...new Set(jobs.map((job) => job.location))].filter(Boolean),
     [jobs]
   );
 
-  const uniqueCompanies = useMemo(
-    () => [...new Set(jobs.map((job) => job.company))].filter(Boolean),
+  // Memoize unique job types
+  const uniqueJobTypes = useMemo(
+    () => [...new Set(jobs.map((job) => job.job_type))].filter(Boolean),
     [jobs]
   );
 
@@ -137,7 +193,7 @@ const JobList = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, locationFilter, companyFilter, sortBy]);
+  }, [appliedSearch, appliedLocation, appliedCompany, appliedJobType, sortBy]);
 
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
@@ -145,11 +201,10 @@ const JobList = () => {
 
   const handleApplyJob = (job) => {
     if (!user) {
-      setIsAuthModalOpen(true); // Langsung set state tanpa perlu openAuthModal
+      setIsAuthModalOpen(true);
       return;
     }
 
-    // Redirect ke application URL eksternal (JobStreet, LinkedIn, dll)
     if (job.application_url) {
       window.open(job.application_url, "_blank");
     } else {
@@ -158,10 +213,17 @@ const JobList = () => {
   };
 
   const clearFilters = () => {
-    setSearchTerm("");
-    setLocationFilter("");
-    setCompanyFilter("");
-    setSortBy("relevance");
+    // Clear inputs
+    setSearchInput("");
+    setLocationInput("");
+    setCompanyInput("");
+    setJobTypeInput("");
+    // Clear applied filters
+    setAppliedSearch("");
+    setAppliedLocation("");
+    setAppliedCompany("");
+    setAppliedJobType("");
+    setSortBy("recent");
   };
 
   // Pagination
@@ -185,7 +247,6 @@ const JobList = () => {
 
   return (
     <div className="job-list-page">
-      {/* Main Content */}
       <div className="container-fluid py-4">
         <div className="row">
           {/* Sidebar Filters */}
@@ -198,15 +259,16 @@ const JobList = () => {
                 </button>
               </div>
 
-              {/* Search */}
+              {/* Search Input */}
               <div className="filter-section">
                 <label>Search</label>
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Job title or company..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Job title, company..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
                 />
               </div>
 
@@ -215,8 +277,8 @@ const JobList = () => {
                 <label>Location</label>
                 <select
                   className="form-select"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
                 >
                   <option value="">All Locations</option>
                   {uniqueLocations.map((location, idx) => (
@@ -230,15 +292,28 @@ const JobList = () => {
               {/* Company Filter */}
               <div className="filter-section">
                 <label>Company</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter company name..."
+                  value={companyInput}
+                  onChange={(e) => setCompanyInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                />
+              </div>
+
+              {/* Job Type Filter */}
+              <div className="filter-section">
+                <label>Job Type</label>
                 <select
                   className="form-select"
-                  value={companyFilter}
-                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  value={jobTypeInput}
+                  onChange={(e) => setJobTypeInput(e.target.value)}
                 >
-                  <option value="">All Companies</option>
-                  {uniqueCompanies.map((company, idx) => (
-                    <option key={idx} value={company}>
-                      {company}
+                  <option value="">All Types</option>
+                  {uniqueJobTypes.map((type, idx) => (
+                    <option key={idx} value={type}>
+                      {type}
                     </option>
                   ))}
                 </select>
@@ -252,19 +327,35 @@ const JobList = () => {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                 >
-                  <option value="relevance">Relevance</option>
-                  <option value="match-score">Match Score</option>
                   <option value="recent">Most Recent</option>
                   <option value="salary-high">Salary: High to Low</option>
                   <option value="salary-low">Salary: Low to High</option>
                 </select>
               </div>
 
-              {/* Results Count */}
-              <div className="results-count mt-3">
-                <p className="text-muted mb-0">
-                  <strong>{filteredJobs.length}</strong> jobs found
-                </p>
+              {/* Apply Filters Button Only */}
+              <div className="apply-filters-section mt-3">
+                <button
+                  className="btn-apply-filters"
+                  onClick={handleApplyFilters}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <circle
+                      cx="11"
+                      cy="11"
+                      r="8"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M21 21L16.65 16.65"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Apply Filters
+                </button>
               </div>
             </div>
           </div>
@@ -273,11 +364,11 @@ const JobList = () => {
           <div className="col-lg-9">
             {currentJobs.length === 0 ? (
               <div className="no-results text-center py-5">
+                <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🤷‍♂️</div>
                 <h3>No jobs found</h3>
-                <p className="text-muted">Try adjusting your filters</p>
-                <button onClick={clearFilters} className="btn btn-primary mt-3">
-                  Clear Filters
-                </button>
+                <p className="text-muted">
+                  Try adjusting your filters or search terms
+                </p>
               </div>
             ) : (
               <>
