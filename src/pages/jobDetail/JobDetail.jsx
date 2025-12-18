@@ -135,7 +135,18 @@ const JobDetail = () => {
   const responsibilities = Array.isArray(job.responsibilities)
     ? job.responsibilities
     : [];
-  const benefits = Array.isArray(job.benefits) ? job.benefits : [];
+
+  const formatSalary = (salary) => {
+    if (!salary) return null;
+    // Jika sudah ada format "Rp", return as is
+    if (typeof salary === "string" && salary.includes("Rp")) return salary;
+    // Jika angka, format dengan thousand separator
+    const num = Number(salary);
+    if (!isNaN(num)) {
+      return `Rp ${num.toLocaleString("id-ID")}`;
+    }
+    return salary;
+  };
 
   return (
     <div className="job-detail-page">
@@ -219,28 +230,11 @@ const JobDetail = () => {
                       {job.job_type}
                     </span>
                   )}
-                  {job.experience_required && (
-                    <span className="meta-item">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M12 6V12L16 14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        />
-                      </svg>
-                      {job.experience_required}
+                  {/* ADD: Salary di meta */}
+                  {job.salary && (
+                    <span className="meta-item salary-meta">
+                      <span style={{ fontSize: "1.2rem" }}>💵</span>
+                      <strong>{formatSalary(job.salary)}</strong>
                     </span>
                   )}
                 </div>
@@ -275,31 +269,6 @@ const JobDetail = () => {
         {/* Main Content */}
         <div className="job-detail-content">
           <div className="content-main">
-            {/* Salary */}
-            {job.salary && (
-              <div className="salary-section">
-                <div className="salary-badge">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M12 6V12L16 14"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <div>
-                    <span className="salary-label">Salary</span>
-                    <span className="salary-amount">{job.salary}</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Description */}
             {job.description && (
@@ -346,39 +315,6 @@ const JobDetail = () => {
                 </div>
               </section>
             )}
-
-            {/* Benefits */}
-            {benefits.length > 0 && (
-              <section className="detail-section">
-                <h2>Benefits & Perks</h2>
-                <ul className="benefits-list">
-                  {benefits.map((benefit, index) => (
-                    <li key={index}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="#22543d"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M8 12L11 15L16 9"
-                          stroke="#22543d"
-                          strokeWidth="2"
-                        />
-                      </svg>
-                      {benefit}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -409,27 +345,6 @@ const JobDetail = () => {
                   </span>
                 </div>
               )}
-            </div>
-
-            <div className="sidebar-card">
-              <h3>Share this job</h3>
-              <div className="share-buttons">
-                <button className="share-btn" title="Copy Link">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  Copy Link
-                </button>
-              </div>
             </div>
           </aside>
         </div>

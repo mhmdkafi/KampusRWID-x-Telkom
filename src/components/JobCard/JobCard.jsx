@@ -57,11 +57,6 @@ const JobCard = ({ job, isActive = false, onApply }) => {
             <span className="job-type-badge">
               {job.job_type || "Full-time"}
             </span>
-            {job.experience_required && (
-              <span className="job-experience-badge">
-                {job.experience_required}
-              </span>
-            )}
           </div>
         </div>
 
@@ -112,7 +107,7 @@ const JobCard = ({ job, isActive = false, onApply }) => {
 
           {job.salary && (
             <div className="job-salary">
-              <span className="salary-icon">💰</span>
+              <span className="salary-icon">💵</span>
               <span className="salary-text">{formatSalary(job.salary)}</span>
             </div>
           )}

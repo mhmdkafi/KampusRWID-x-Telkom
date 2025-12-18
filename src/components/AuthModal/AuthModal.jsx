@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import "./AuthModal.css";
 
-const AuthModal = ({ isOpen, onClose }) => {
+const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
   const { signUp, signIn } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode === "login");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -14,6 +14,13 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Update isLogin when initialMode or isOpen changes
+  useEffect(() => {
+    if (isOpen) {
+      setIsLogin(initialMode === "login");
+    }
+  }, [initialMode, isOpen]);
 
   const handleInputChange = (e) => {
     setFormData({

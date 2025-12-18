@@ -7,11 +7,14 @@ import AuthModal from "../../components/AuthModal/AuthModal";
 const Home = () => {
   const { user } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState("login"); // ADD: state untuk mode
   const navigate = useNavigate();
 
   const isAuthenticated = !!user;
 
-  const openAuthModal = () => {
+  // UPDATE: Tambah parameter mode
+  const openAuthModal = (mode = "login") => {
+    setAuthMode(mode);
     setIsAuthModalOpen(true);
   };
 
@@ -21,7 +24,7 @@ const Home = () => {
 
   const handleJobMatchingClick = () => {
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal("login"); // Buka sebagai login
     } else {
       navigate("/matching");
     }
@@ -370,7 +373,7 @@ const Home = () => {
                         justifyContent: "center",
                         transition: "all 0.3s ease",
                       }}
-                      onClick={() => openAuthModal()}
+                      onClick={() => openAuthModal("register")} // CHANGED: pass "register"
                       onMouseOver={(e) => {
                         e.target.style.background = "#22543d";
                         e.target.style.color = "white";
@@ -513,7 +516,12 @@ const Home = () => {
         </div>
       </main>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
+      {/* UPDATE: Pass authMode as initialMode */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        initialMode={authMode}
+      />
     </div>
   );
 };

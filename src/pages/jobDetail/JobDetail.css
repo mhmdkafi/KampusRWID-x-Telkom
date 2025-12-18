@@ -128,6 +128,20 @@
   color: #22543d;
 }
 
+/* ADD: Style khusus untuk salary meta */
+.meta-item.salary-meta {
+  background: rgba(34, 84, 61, 0.08);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(34, 84, 61, 0.15);
+}
+
+.meta-item.salary-meta strong {
+  color: #22543d;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
 /* Header Actions */
 .header-actions {
   display: flex;
@@ -188,41 +202,6 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
-}
-
-/* Salary Section */
-.salary-section {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 2px solid #22543d;
-}
-
-.salary-badge {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.salary-badge svg {
-  color: #22543d;
-}
-
-.salary-badge > div {
-  display: flex;
-  flex-direction: column;
-}
-
-.salary-label {
-  font-size: 0.875rem;
-  color: #475569;
-  font-weight: 500;
-}
-
-.salary-amount {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #22543d;
 }
 
 /* Detail Sections */

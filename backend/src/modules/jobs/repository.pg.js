@@ -7,7 +7,7 @@ export class PgJobsRepository extends JobsRepository {
     const { data, error } = await supabase
       .from("jobs")
       .select(
-        "id, title, company, location, skills, description, salary, benefits, experience_required, job_type, image_url, requirements, responsibilities, created_at, updated_at"
+        "id, title, company, location, skills, description, salary, job_type, image_url, requirements, responsibilities, created_at, updated_at"
       )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -84,8 +84,8 @@ export class PgJobsRepository extends JobsRepository {
         id,
         created_at,
         job:jobs (
-          id, title, company, location, skills, description, salary, benefits,
-          experience_required, job_type, image_url, requirements, responsibilities,
+          id, title, company, location, skills, description, salary,
+          job_type, image_url, requirements, responsibilities,
           created_at, updated_at
         )
       `

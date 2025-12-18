@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import JobCard from "../JobCard/JobCard";
+import { useNavigate } from "react-router-dom";
 import { getJobs } from "../../services/api/matchingAPI";
 import "./JobSlider.css";
 
 const JobSlider = () => {
+  const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -49,13 +50,26 @@ const JobSlider = () => {
     setCurrentIndex(currentIndex === jobs.length - 1 ? 0 : currentIndex + 1);
   };
 
+  const handleViewJob = (jobId) => {
+    navigate(`/jobs/${jobId}`);
+  };
+
+  const formatSalary = (salary) => {
+    if (!salary) return null;
+    if (typeof salary === "string" && salary.includes("Rp")) return salary;
+    const num = Number(salary);
+    if (!isNaN(num)) {
+      return `Rp ${num.toLocaleString("id-ID")}`;
+    }
+    return salary;
+  };
+
   if (isLoading) {
     return (
       <div className="job-slider-container">
-        <div className="text-center py-5">
-          <div className="spinner-border text-success" role="status">
-            <span className="visually-hidden">Loading jobs...</span>
-          </div>
+        <div className="slider-loading">
+          <div className="spinner"></div>
+          <p>Loading jobs...</p>
         </div>
       </div>
     );
@@ -64,70 +78,165 @@ const JobSlider = () => {
   if (jobs.length === 0) {
     return (
       <div className="job-slider-container">
-        <div className="text-center py-5">
-          <p className="text-muted">No jobs available at the moment.</p>
+        <div className="slider-empty">
+          <p>No jobs available at the moment.</p>
         </div>
       </div>
     );
   }
 
+  const currentJob = jobs[currentIndex];
+  const skills = Array.isArray(currentJob.skills) ? currentJob.skills : [];
+  const visibleSkills = skills.slice(0, 3);
+
   return (
     <div className="job-slider-container">
       {/* Header */}
       <div className="slider-header">
-        <h3 className="slider-title">Rekomendasi Pekerjaan Untuk Anda</h3>
-        <p className="slider-subtitle">
-          <span className="job-count">{jobs.length}</span> peluang karir menanti
-        </p>
+        <h3 className="slider-title">Featured Jobs</h3>
       </div>
 
-      {/* Main Slider Content */}
+      {/* Main Slider */}
       <div className="slider-main-container">
         {/* Left Navigation */}
         <button
           onClick={goToPrevious}
-          className="slider-nav-btn slider-nav-left"
+          className="nav-button nav-left"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
+          aria-label="Previous job"
         >
-          <span>‹</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 18L9 12L15 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
 
-        {/* Job Card Display */}
-        <div className="slider-content">
+        {/* Job Card Display - Single Card */}
+        <div className="job-card-container">
           <div
-            className="slider-track"
-            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+            className="job-card-single"
+            onClick={() => handleViewJob(currentJob.id)}
           >
-            {jobs.map((job, index) => (
-              <div key={job.id || index} className="slider-item">
-                <JobCard job={job} />
+            {/* Company Logo */}
+            <div className="job-card-header">
+              <div className="company-logo-section">
+                {currentJob.image_url ? (
+                  <img
+                    src={currentJob.image_url}
+                    alt={currentJob.company}
+                    className="company-logo"
+                  />
+                ) : (
+                  <div className="company-logo-fallback">
+                    {currentJob.company.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
-            ))}
+              <div className="job-type-badge">
+                {currentJob.job_type || "Full-time"}
+              </div>
+            </div>
+
+            {/* Job Info */}
+            <div className="job-card-body">
+              <h4 className="job-title">{currentJob.title}</h4>
+              <p className="job-company">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 2L2 7L12 12L22 7L12 2Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+                {currentJob.company}
+              </p>
+
+              {currentJob.location && (
+                <p className="job-location">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M21 10C21 17 12 23 12 23S3 17 3 10C3 5.58 6.58 2 12 2S21 5.58 21 10Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <circle
+                      cx="12"
+                      cy="10"
+                      r="3"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  {currentJob.location}
+                </p>
+              )}
+
+              {currentJob.salary && (
+                <div className="job-salary">
+                  <span className="salary-icon">💰</span>
+                  <span className="salary-text">
+                    {formatSalary(currentJob.salary)}
+                  </span>
+                </div>
+              )}
+
+              {/* Skills */}
+              {visibleSkills.length > 0 && (
+                <div className="job-skills">
+                  {visibleSkills.map((skill, index) => (
+                    <span key={index} className="skill-tag">
+                      {skill}
+                    </span>
+                  ))}
+                  {skills.length > 3 && (
+                    <span className="skill-tag more">+{skills.length - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="job-card-footer">
+              <button className="btn-view-details">
+                View Details
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M5 12H19M19 12L12 5M19 12L12 19"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Right Navigation */}
         <button
           onClick={goToNext}
-          className="slider-nav-btn slider-nav-right"
+          className="nav-button nav-right"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
+          aria-label="Next job"
         >
-          <span>›</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 18L15 12L9 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
-      </div>
-
-      {/* Dots Indicator */}
-      <div className="slider-dots">
-        {jobs.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToSlide(index)}
-            className={`slider-dot ${index === currentIndex ? "active" : ""}`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
       </div>
     </div>
   );
