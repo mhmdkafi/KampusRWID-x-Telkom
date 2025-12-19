@@ -16,7 +16,6 @@ export class CVRepository {
         .update({
           filename,
           storage_path: storagePath,
-          text_content: textContent,
           created_at: new Date().toISOString(),
         })
         .eq("user_id", userId)
@@ -33,7 +32,6 @@ export class CVRepository {
           user_id: userId,
           filename,
           storage_path: storagePath,
-          text_content: textContent,
         })
         .select()
         .maybeSingle();

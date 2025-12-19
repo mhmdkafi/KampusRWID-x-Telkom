@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import CVUpload from "../../components/cv/CVUpload";
@@ -7,7 +7,12 @@ import LoadingSpinner from "../../components/LoadingSpinner/LoadingSpinner";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import { cvAnalyzer } from "../../services/ml/cvAnalyzer";
 import { matchCalculator } from "../../services/ml/matchCalculator";
-import { getJobs, uploadCVAndMatch } from "../../services/api/matchingAPI"; // UPDATE
+import {
+  getJobs,
+  uploadCVAndMatch,
+  saveRecommendations,
+  getLatestRecommendations,
+} from "../../services/api/matchingAPI";
 import "./JobMatching.css";
 
 const JobMatching = () => {
@@ -20,6 +25,7 @@ const JobMatching = () => {
   const [matchResults, setMatchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [cvId, setCvId] = useState(null);
 
   const isAuthenticated = !!user;
 
@@ -31,17 +37,54 @@ const JobMatching = () => {
     setIsAuthModalOpen(false);
   };
 
+  // Load existing recommendations saat user login
+  useEffect(() => {
+    if (user) {
+      loadExistingRecommendations();
+    }
+  }, [user]);
+
+  const loadExistingRecommendations = async () => {
+    try {
+      console.log("🔍 Loading existing recommendations...");
+      const result = await getLatestRecommendations();
+
+      if (result.recommendation) {
+        const { recommendations, cv_analysis, cv_id } = result.recommendation;
+
+        console.log("✅ Found existing recommendations:", {
+          count: recommendations.length,
+          cv_id,
+        });
+
+        // Restore state
+        setAnalysisResults(cv_analysis);
+        setMatchResults(recommendations);
+        setCvId(cv_id);
+
+        if (recommendations.length > 0) {
+          setCurrentStep(3); // Langsung ke hasil
+        }
+      } else {
+        console.log("ℹ️ No existing recommendations found");
+      }
+    } catch (error) {
+      console.log("ℹ️ No existing recommendations:", error.message);
+    }
+  };
+
   const handleCVUpload = async (file) => {
     setIsLoading(true);
     setCvFile(file);
 
     try {
-      // 1. Upload CV ke backend (simpan ke DB + Storage)
       console.log("📤 Uploading CV to server...");
       const uploadResult = await uploadCVAndMatch(file);
       console.log("✅ CV uploaded to server:", uploadResult);
 
-      // 2. Analisis CV di frontend
+      setCvId(uploadResult.cv_id);
+      console.log("💾 CV ID saved:", uploadResult.cv_id);
+
       console.log("📄 Analyzing CV...");
       const analysis = await cvAnalyzer.analyzeCV(file);
       console.log("✅ CV Analysis Complete:", analysis);
@@ -62,7 +105,6 @@ const JobMatching = () => {
     setIsLoading(true);
 
     try {
-      // Fetch jobs dari database
       console.log("📡 Fetching jobs from database...");
       const jobsList = await getJobs();
       console.log(`✅ Loaded ${jobsList.length} jobs from database`);
@@ -74,13 +116,41 @@ const JobMatching = () => {
       }
 
       // Calculate matches
-      const matches = matchCalculator.calculateMatches(
+      const allMatches = matchCalculator.calculateMatches(
         analysisResults,
         jobsList
       );
-      console.log("✅ Job Matching Complete:", matches);
 
-      setMatchResults(matches);
+      // HANYA AMBIL TOP 5
+      const top5Matches = allMatches.slice(0, 5);
+      console.log("✅ Top 5 Job Matching Complete:", top5Matches);
+
+      // SAVE TO DATABASE
+      if (cvId) {
+        try {
+          console.log("💾 Saving recommendations to database...", {
+            cvId,
+            matchCount: top5Matches.length,
+          });
+
+          const saveResult = await saveRecommendations(
+            cvId,
+            top5Matches,
+            analysisResults
+          );
+
+          console.log("✅ Recommendations saved successfully:", saveResult);
+        } catch (saveError) {
+          console.error("❌ Failed to save recommendations:", saveError);
+          alert(
+            "Warning: Job matches calculated but not saved. You may need to re-upload your CV."
+          );
+        }
+      } else {
+        console.warn("⚠️ No CV ID found, cannot save recommendations");
+      }
+
+      setMatchResults(top5Matches);
       setCurrentStep(3);
     } catch (error) {
       console.error("❌ Job Matching Error:", error);
@@ -95,6 +165,7 @@ const JobMatching = () => {
     setCvFile(null);
     setAnalysisResults(null);
     setMatchResults([]);
+    // Jangan reset cvId, biar bisa load kembali
   };
 
   const handleViewAllJobs = () => {

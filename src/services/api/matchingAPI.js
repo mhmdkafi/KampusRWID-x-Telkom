@@ -254,3 +254,47 @@ export async function getUserInfo() {
 
   return res.json();
 }
+
+// Job Recommendations API
+export async function saveRecommendations(cvId, recommendations, cvAnalysis) {
+  const token = await getAuthToken();
+  if (!token) throw new Error("Anda belum login");
+
+  const res = await fetch(`${API_BASE_URL}/recommendations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      cv_id: cvId,
+      recommendations,
+      cv_analysis: cvAnalysis,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Gagal save recommendations: ${res.status} ${errText}`);
+  }
+
+  return res.json();
+}
+
+export async function getLatestRecommendations() {
+  const token = await getAuthToken();
+  if (!token) throw new Error("Anda belum login");
+
+  const res = await fetch(`${API_BASE_URL}/recommendations/latest`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Gagal get recommendations: ${res.status} ${errText}`);
+  }
+
+  return res.json();
+}

@@ -8,6 +8,7 @@ import { healthRoutes } from "./modules/health/routes.js";
 import { authRoutes } from "./modules/auth/routes.js";
 import jobsRoutes from "./modules/jobs/routes.js";
 import { cvRoutes } from "./modules/cv/routes.js";
+import recommendationsRoutes from "./modules/matching/routes.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true });
@@ -29,6 +30,7 @@ export function buildApp() {
   app.register(healthRoutes);
   app.register(jobsRoutes, { prefix: "/api" });
   app.register(cvRoutes, { prefix: "/api" });
+  app.register(recommendationsRoutes, { prefix: "/api" });
   app.register(authRoutes, { prefix: "/api" });
 
   return app;
