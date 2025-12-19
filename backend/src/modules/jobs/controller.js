@@ -1,10 +1,8 @@
 import { PgJobsRepository } from "./repository.pg.js";
 import { makeListJobs } from "./listjobs.js";
 import { supabase } from "../../config/supabase.js";
-import { CVRepository } from "../cv/repository.js";
 
 const jobsRepo = new PgJobsRepository();
-const cvRepo = new CVRepository();
 const listJobs = makeListJobs({ jobsRepo });
 
 export const getJobs = async (request, reply) => {
@@ -66,7 +64,7 @@ export const createJob = async (request, reply) => {
     image_url,
     requirements,
     responsibilities,
-    application_url, // ADD: Tambahkan ini
+    application_url,
   } = request.body || {};
 
   if (!title || !company) {
@@ -125,7 +123,7 @@ export const deleteJob = async (request, reply) => {
 // Saved Jobs Controllers
 export const saveJob = async (request, reply) => {
   const { job_id } = request.body;
-  const userId = request.user?.sub || request.user?.id; // FIX: Support both
+  const userId = request.user?.sub || request.user?.id;
 
   if (!job_id) {
     return reply.code(400).send({ error: "job_id required" });
@@ -171,147 +169,10 @@ export const unsaveJob = async (request, reply) => {
 };
 
 export const getSavedJobs = async (request, reply) => {
-  const userId = request.user?.sub || request.user?.id; // FIX: Support both
+  const userId = request.user?.sub || request.user?.id;
   const jobs = await jobsRepo.getSavedJobs(userId);
 
   return { jobs };
-};
-
-// Job Applications Controllers
-export const applyJob = async (request, reply) => {
-  const { job_id, cover_letter } = request.body;
-  const userId = request.user?.sub || request.user?.id;
-
-  if (!job_id) {
-    return reply.code(400).send({ error: "job_id required" });
-  }
-
-  try {
-    // 1. Check if user has CV
-    const userCV = await cvRepo.getUserCV(userId);
-
-    if (!userCV) {
-      return reply.code(400).send({
-        error: "CV_REQUIRED",
-        message: "Please upload your CV first before applying",
-        redirect: "/matching",
-      });
-    }
-
-    // 2. Check if already applied
-    const { data: existing } = await supabase
-      .from("job_applications")
-      .select("id, status")
-      .eq("user_id", userId)
-      .eq("job_id", job_id)
-      .maybeSingle();
-
-    if (existing) {
-      return reply.code(409).send({
-        error: "ALREADY_APPLIED",
-        message: "You have already applied to this job",
-        application: existing,
-      });
-    }
-
-    // 3. Create application
-    const { data: application, error } = await supabase
-      .from("job_applications")
-      .insert({
-        user_id: userId,
-        job_id: job_id,
-        cv_id: userCV.id,
-        cover_letter: cover_letter || null,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // 4. Get job details for confirmation
-    const job = await jobsRepo.findById(job_id);
-
-    return {
-      message: "Application submitted successfully",
-      application,
-      job: {
-        id: job.id,
-        title: job.title,
-        company: job.company,
-      },
-    };
-  } catch (error) {
-    console.error("Apply job error:", error);
-    return reply.code(500).send({
-      error: "Failed to submit application",
-      message: error.message,
-    });
-  }
-};
-
-export const getMyApplications = async (request, reply) => {
-  const userId = request.user?.sub || request.user?.id;
-
-  try {
-    const { data, error } = await supabase
-      .from("job_applications")
-      .select(
-        `
-        id,
-        job_id,
-        status,
-        cover_letter,
-        applied_at,
-        updated_at,
-        job:jobs (
-          id, title, company, location, salary, job_type, image_url
-        )
-      `
-      )
-      .eq("user_id", userId)
-      .order("applied_at", { ascending: false });
-
-    if (error) throw error;
-
-    const applications = (data || []).map((app) => ({
-      ...app,
-      job: app.job || {},
-    }));
-
-    return { applications };
-  } catch (error) {
-    console.error("Get applications error:", error);
-    return reply.code(500).send({
-      error: "Failed to fetch applications",
-    });
-  }
-};
-
-export const checkApplicationStatus = async (request, reply) => {
-  const { job_id } = request.params;
-  const userId = request.user?.sub || request.user?.id;
-
-  try {
-    const { data, error } = await supabase
-      .from("job_applications")
-      .select("id, status, applied_at")
-      .eq("user_id", userId)
-      .eq("job_id", job_id)
-      .maybeSingle();
-
-    if (error && error.code !== "PGRST116") throw error;
-
-    return {
-      applied: !!data,
-      application: data || null,
-    };
-  } catch (error) {
-    console.error("Check application error:", error);
-    return reply.code(500).send({
-      error: "Failed to check application status",
-    });
-  }
 };
 
 export const seedJobs = async (request) => {
