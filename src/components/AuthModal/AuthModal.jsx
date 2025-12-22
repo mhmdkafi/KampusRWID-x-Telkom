@@ -73,19 +73,22 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
         }
 
         await signUp(formData.email, formData.password, formData.fullName);
-        setSuccess("Registrasi berhasil! Silakan login...");
 
-        // Auto switch ke login setelah 2 detik
+        setSuccess(
+          "Registrasi berhasil! Silakan login"
+        );
+
+        // Auto switch ke login setelah 3 detik
         setTimeout(() => {
           setIsLogin(true);
           setFormData({
-            email: formData.email, // Keep email
+            email: formData.email, // Keep email untuk login
             password: "",
             fullName: "",
             confirmPassword: "",
           });
           setSuccess("");
-        }, 2000);
+        }, 3000);
       }
     } catch (err) {
       console.error("Auth error:", err);

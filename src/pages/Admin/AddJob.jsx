@@ -1,25 +1,70 @@
-import React, { useState } from "react";
-import { createJob } from "../../services/api/matchingAPI";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  createJob,
+  updateJob,
+  getJobById,
+} from "../../services/api/matchingAPI";
 import "./AddJob.css";
 
-function AddJob() {
+const AddJob = () => {
+  const navigate = useNavigate();
+  const { id } = useParams(); // Get ID from URL for edit mode
+  const isEditMode = Boolean(id);
+
   const [formData, setFormData] = useState({
     title: "",
     company: "",
     location: "",
-    skills: "",
-    description: "",
-    salary: "",
-    benefits: "",
-    experience_required: "",
     job_type: "Full-time",
-    image_url: "",
+    salary: "",
+    description: "",
     requirements: "",
     responsibilities: "",
+    skills: "",
     application_url: "",
+    image_url: "",
   });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [fetchingJob, setFetchingJob] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      fetchJobData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isEditMode]); // Add dependencies
+
+  const fetchJobData = async () => {
+    try {
+      setFetchingJob(true);
+      const job = await getJobById(id);
+
+      setFormData({
+        title: job.title || "",
+        company: job.company || "",
+        location: job.location || "",
+        job_type: job.job_type || "Full-time",
+        salary: job.salary || "",
+        description: job.description || "",
+        requirements: Array.isArray(job.requirements)
+          ? job.requirements.join("\n")
+          : "",
+        responsibilities: Array.isArray(job.responsibilities)
+          ? job.responsibilities.join("\n")
+          : "",
+        skills: Array.isArray(job.skills) ? job.skills.join(", ") : "",
+        application_url: job.application_url || "",
+        image_url: job.image_url || "",
+      });
+    } catch (error) {
+      console.error("Error fetching job:", error);
+      alert("Failed to load job data");
+      navigate("/admin/jobs");
+    } finally {
+      setFetchingJob(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -31,245 +76,239 @@ function AddJob() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
 
     try {
       const jobData = {
-        title: formData.title,
-        company: formData.company,
-        location: formData.location || null,
+        ...formData,
         skills: formData.skills
-          ? formData.skills.split(",").map((s) => s.trim())
-          : [],
-        description: formData.description || null,
-        salary: formData.salary || null,
-        benefits: formData.benefits
-          ? formData.benefits.split(",").map((b) => b.trim())
-          : [],
-        experience_required: formData.experience_required || null,
-        job_type: formData.job_type || "Full-time",
-        image_url: formData.image_url || null,
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s),
         requirements: formData.requirements
-          ? formData.requirements.split("\n").filter((r) => r.trim())
-          : [],
+          .split("\n")
+          .map((r) => r.trim())
+          .filter((r) => r),
         responsibilities: formData.responsibilities
-          ? formData.responsibilities.split("\n").filter((r) => r.trim())
-          : [],
-        application_url: formData.application_url || null,
+          .split("\n")
+          .map((r) => r.trim())
+          .filter((r) => r),
       };
 
-      await createJob(jobData);
-      setMessage("✅ Job berhasil ditambahkan!");
+      if (isEditMode) {
+        await updateJob(id, jobData);
+        alert("Job updated successfully!");
+      } else {
+        await createJob(jobData);
+        alert("Job added successfully!");
+      }
 
-      // Reset form
-      setFormData({
-        title: "",
-        company: "",
-        location: "",
-        skills: "",
-        description: "",
-        salary: "",
-        benefits: "",
-        experience_required: "",
-        job_type: "Full-time",
-        image_url: "",
-        requirements: "",
-        responsibilities: "",
-        application_url: "",
-      });
-
-      // Auto-hide message setelah 3 detik
-      setTimeout(() => setMessage(""), 3000);
-    } catch (err) {
-      setMessage(`❌ Error: ${err.message}`);
+      navigate("/admin/jobs");
+    } catch (error) {
+      console.error("Error saving job:", error);
+      alert(`Failed to ${isEditMode ? "update" : "add"} job: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetchingJob) {
+    return (
+      <div className="add-job-page">
+        <div className="container py-5 text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="add-job-container">
-      <h2>Tambah Lowongan Pekerjaan</h2>
-
-      {message && (
-        <div
-          className={
-            message.includes("Error") ? "message error" : "message success"
-          }
-        >
-          {message}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Judul Pekerjaan: *</label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g. Golang Backend Engineer"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Perusahaan: *</label>
-            <input
-              type="text"
-              name="company"
-              value={formData.company}
-              onChange={handleChange}
-              placeholder="e.g. PT. Kredit Utama Fintech Indonesia"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label>Lokasi:</label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g. Jakarta Utara, Jakarta Raya"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Tipe Pekerjaan:</label>
-            <select
-              name="job_type"
-              value={formData.job_type}
-              onChange={handleChange}
+    <div className="add-job-page">
+      <div className="container py-5">
+        <div className="page-header">
+          <button onClick={() => navigate("/admin/jobs")} className="back-btn">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
             >
-              <option value="Full-time">Full-time</option>
-              <option value="Part-time">Part-time</option>
-              <option value="Contract">Contract</option>
-              <option value="Internship">Internship</option>
-              <option value="Freelance">Freelance</option>
-            </select>
-          </div>
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Jobs
+          </button>
+          <h1>{isEditMode ? "Edit Job" : "Add New Job"}</h1>
+          <p className="text-muted">
+            {isEditMode
+              ? "Update job listing details"
+              : "Fill in the form to add a new job"}
+          </p>
         </div>
 
-        <div className="form-row">
+        <form onSubmit={handleSubmit} className="job-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>
+                Job Title <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                placeholder="e.g., Frontend Developer"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>
+                Company <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                required
+                placeholder="e.g., Tech Company"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Location</label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="e.g., Jakarta, Indonesia"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Job Type</label>
+              <select
+                name="job_type"
+                value={formData.job_type}
+                onChange={handleChange}
+              >
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Internship">Internship</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Salary Range</label>
+              <input
+                type="text"
+                name="salary"
+                value={formData.salary}
+                onChange={handleChange}
+                placeholder="e.g., Rp 8.000.000 - 12.000.000"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Application URL</label>
+              <input
+                type="url"
+                name="application_url"
+                value={formData.application_url}
+                onChange={handleChange}
+                placeholder="https://example.com/apply"
+              />
+            </div>
+          </div>
+
           <div className="form-group">
-            <label>Gaji:</label>
+            <label>Company Logo URL</label>
             <input
-              type="text"
-              name="salary"
-              value={formData.salary}
+              type="url"
+              name="image_url"
+              value={formData.image_url}
               onChange={handleChange}
-              placeholder="e.g. Rp 8.000.000 - Rp 12.000.000"
+              placeholder="https://example.com/logo.png"
             />
           </div>
 
           <div className="form-group">
-            <label>Pengalaman Dibutuhkan:</label>
-            <input
-              type="text"
-              name="experience_required"
-              value={formData.experience_required}
+            <label>Job Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
               onChange={handleChange}
-              placeholder="e.g. Minimum 3 years Golang experience"
+              rows="5"
+              placeholder="Describe the job role..."
             />
           </div>
-        </div>
 
-        <div className="form-group">
-          <label>URL Logo Perusahaan:</label>
-          <input
-            type="url"
-            name="image_url"
-            value={formData.image_url}
-            onChange={handleChange}
-            placeholder="https://example.com/logo.png"
-          />
-        </div>
+          <div className="form-group">
+            <label>Requirements (one per line)</label>
+            <textarea
+              name="requirements"
+              value={formData.requirements}
+              onChange={handleChange}
+              rows="5"
+              placeholder="e.g.,&#10;Bachelor's degree in Computer Science&#10;3+ years experience"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Skills (pisahkan dengan koma):</label>
-          <input
-            type="text"
-            name="skills"
-            value={formData.skills}
-            onChange={handleChange}
-            placeholder="e.g. Golang, Backend Development, Database, Cloud Computing, REST API"
-          />
-        </div>
+          <div className="form-group">
+            <label>Responsibilities (one per line)</label>
+            <textarea
+              name="responsibilities"
+              value={formData.responsibilities}
+              onChange={handleChange}
+              rows="5"
+              placeholder="e.g.,&#10;Develop web applications&#10;Work with team"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Benefits (pisahkan dengan koma):</label>
-          <input
-            type="text"
-            name="benefits"
-            value={formData.benefits}
-            onChange={handleChange}
-            placeholder="e.g. Medical, Miscellaneous allowance, Catering/Food"
-          />
-        </div>
+          <div className="form-group">
+            <label>Skills (comma-separated)</label>
+            <input
+              type="text"
+              name="skills"
+              value={formData.skills}
+              onChange={handleChange}
+              placeholder="e.g., React, Node.js, MongoDB"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Deskripsi:</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows="4"
-            placeholder="As a Golang Backend Engineer at PT. Kredit Utama Fintech Indonesia, you will be responsible for..."
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Requirements (satu per baris):</label>
-          <textarea
-            name="requirements"
-            value={formData.requirements}
-            onChange={handleChange}
-            rows="5"
-            placeholder="Pengalaman Golang minimal 3 tahun&#10;Pemahaman arsitektur backend&#10;Pengalaman desain dan optimasi database"
-          />
-          <small className="form-help">Tulis satu requirement per baris</small>
-        </div>
-
-        <div className="form-group">
-          <label>Responsibilities (satu per baris):</label>
-          <textarea
-            name="responsibilities"
-            value={formData.responsibilities}
-            onChange={handleChange}
-            rows="5"
-            placeholder="Mengembangkan sistem backend menggunakan Golang&#10;Bekerja sama dengan tim frontend dan produk&#10;Mengoptimalkan performa aplikasi"
-          />
-          <small className="form-help">
-            Tulis satu responsibility per baris
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="application_url">
-            Application URL (JobStreet)
-          </label>
-          <input
-            type="url"
-            id="application_url"
-            name="application_url"
-            value={formData.application_url}
-            onChange={handleChange}
-            placeholder="https://id.jobstreet.com/id/job/..."
-          />
-        </div>
-
-        <button type="submit" disabled={loading} className="submit-btn">
-          {loading ? "Menambahkan..." : "Tambah Job"}
-        </button>
-      </form>
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/jobs")}
+              className="btn-cancel"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="spinner-border spinner-border-sm me-2" />
+                  {isEditMode ? "Updating..." : "Adding..."}
+                </>
+              ) : (
+                <>{isEditMode ? "Update Job" : "Add Job"}</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
-}
+};
 
 export default AddJob;
