@@ -6,8 +6,12 @@ const jobsRepo = new PgJobsRepository();
 const listJobs = makeListJobs({ jobsRepo });
 
 export const getJobs = async (request, reply) => {
-  const { user_id } = request.query;
-  const jobs = await listJobs();
+  const { user_id, limit = 10, offset = 0 } = request.query;
+
+  const parsedLimit = parseInt(limit, 10) || 10;
+  const parsedOffset = parseInt(offset, 10) || 0;
+
+  const jobs = await listJobs({ limit: parsedLimit, offset: parsedOffset });
 
   if (user_id) {
     try {
@@ -184,4 +188,20 @@ export const seedJobs = async (request) => {
 
   await jobsRepo.bulkInsert(jobs);
   return { message: `${jobs.length} jobs inserted` };
+};
+
+// Ganti endpoint count tanpa authentication requirement
+export const getJobsCount = async (request, reply) => {
+  try {
+    const { count, error } = await supabase
+      .from("jobs")
+      .select("*", { count: "exact", head: true });
+
+    if (error) throw error;
+
+    return { count: count || 0 };
+  } catch (error) {
+    request.log.error({ error }, "Failed to get jobs count");
+    return reply.code(500).send({ error: "Failed to get jobs count" });
+  }
 };

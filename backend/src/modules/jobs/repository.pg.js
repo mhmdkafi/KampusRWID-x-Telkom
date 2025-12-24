@@ -3,7 +3,7 @@ import { pool } from "../../config/db.js";
 import { JobsRepository } from "./repository.js";
 
 export class PgJobsRepository extends JobsRepository {
-  async listAll({ limit = 50, offset = 0 } = {}) {
+  async listAll({ limit = 10, offset = 0 } = {}) {
     const { data, error } = await supabase
       .from("jobs")
       .select(

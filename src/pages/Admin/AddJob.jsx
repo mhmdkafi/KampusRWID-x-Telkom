@@ -11,28 +11,29 @@ const AddJob = () => {
   const navigate = useNavigate();
   const { id: jobId } = useParams();
   const isEditMode = Boolean(jobId);
-  const { notification, showNotification, hideNotification } = useNotification();
+  const { notification, showNotification, hideNotification } =
+    useNotification();
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     company: "",
     location: "",
-    type: "Full-time",
-    salary_min: "",
-    salary_max: "",
+    job_type: "Full Time",
+    salary: "",
     description: "",
-    requirements: "",
-    responsibilities: "",
-    benefits: "",
-    required_skills: [],
-    experience_level: "Entry Level",
-    status: "active",
+    requirements: [],
+    responsibilities: [],
+    skills: [],
+    image_url: "",
+    application_url: "",
   });
 
   const [skillInput, setSkillInput] = useState("");
+  const [requirementInput, setRequirementInput] = useState("");
+  const [responsibilityInput, setResponsibilityInput] = useState("");
 
-  // Fetch job data if editing - gunakan useCallback untuk fix warning
+  // Fetch job data if editing
   const fetchJobData = useCallback(async () => {
     try {
       setLoading(true);
@@ -52,20 +53,21 @@ const AddJob = () => {
         throw new Error(result.error || "Failed to fetch job");
       }
 
+      const job = result.job;
       setFormData({
-        title: result.job.title || "",
-        company: result.job.company || "",
-        location: result.job.location || "",
-        type: result.job.type || "Full-time",
-        salary_min: result.job.salary_min || "",
-        salary_max: result.job.salary_max || "",
-        description: result.job.description || "",
-        requirements: result.job.requirements || "",
-        responsibilities: result.job.responsibilities || "",
-        benefits: result.job.benefits || "",
-        required_skills: result.job.required_skills || [],
-        experience_level: result.job.experience_level || "Entry Level",
-        status: result.job.status || "active",
+        title: job.title || "",
+        company: job.company || "",
+        location: job.location || "",
+        job_type: job.job_type || "Full Time",
+        salary: job.salary || "",
+        description: job.description || "",
+        requirements: Array.isArray(job.requirements) ? job.requirements : [],
+        responsibilities: Array.isArray(job.responsibilities)
+          ? job.responsibilities
+          : [],
+        skills: Array.isArray(job.skills) ? job.skills : [],
+        image_url: job.image_url || "",
+        application_url: job.application_url || "",
       });
     } catch (error) {
       console.error("Error fetching job:", error);
@@ -91,10 +93,10 @@ const AddJob = () => {
   };
 
   const handleAddSkill = () => {
-    if (skillInput.trim() && !formData.required_skills.includes(skillInput.trim())) {
+    if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
       setFormData((prev) => ({
         ...prev,
-        required_skills: [...prev.required_skills, skillInput.trim()],
+        skills: [...prev.skills, skillInput.trim()],
       }));
       setSkillInput("");
     }
@@ -103,8 +105,51 @@ const AddJob = () => {
   const handleRemoveSkill = (skillToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      required_skills: prev.required_skills.filter(
-        (skill) => skill !== skillToRemove
+      skills: prev.skills.filter((skill) => skill !== skillToRemove),
+    }));
+  };
+
+  const handleAddRequirement = () => {
+    if (
+      requirementInput.trim() &&
+      !formData.requirements.includes(requirementInput.trim())
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        requirements: [...prev.requirements, requirementInput.trim()],
+      }));
+      setRequirementInput("");
+    }
+  };
+
+  const handleRemoveRequirement = (reqToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      requirements: prev.requirements.filter((req) => req !== reqToRemove),
+    }));
+  };
+
+  const handleAddResponsibility = () => {
+    if (
+      responsibilityInput.trim() &&
+      !formData.responsibilities.includes(responsibilityInput.trim())
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        responsibilities: [
+          ...prev.responsibilities,
+          responsibilityInput.trim(),
+        ],
+      }));
+      setResponsibilityInput("");
+    }
+  };
+
+  const handleRemoveResponsibility = (respToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      responsibilities: prev.responsibilities.filter(
+        (resp) => resp !== respToRemove
       ),
     }));
   };
@@ -131,9 +176,7 @@ const AddJob = () => {
         return;
       }
 
-      const url = isEditMode
-        ? `${API_URL}/jobs/${jobId}`
-        : `${API_URL}/jobs`;
+      const url = isEditMode ? `${API_URL}/jobs/${jobId}` : `${API_URL}/jobs`;
 
       const method = isEditMode ? "PUT" : "POST";
 
@@ -157,7 +200,6 @@ const AddJob = () => {
         "success"
       );
 
-      // Wait a bit to show notification before navigating
       setTimeout(() => {
         navigate("/admin/jobs");
       }, 1500);
@@ -235,7 +277,7 @@ const AddJob = () => {
                 className="form-control"
                 value={formData.title}
                 onChange={handleInputChange}
-                placeholder="e.g. Senior Frontend Developer"
+                placeholder="e.g. Backend Developer"
                 required
               />
             </div>
@@ -268,7 +310,7 @@ const AddJob = () => {
                   className="form-control"
                   value={formData.location}
                   onChange={handleInputChange}
-                  placeholder="e.g. Jakarta, Indonesia"
+                  placeholder="e.g. Jakarta Raya (Hybrid)"
                   required
                 />
               </div>
@@ -276,16 +318,16 @@ const AddJob = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="type">Job Type</label>
+                <label htmlFor="job_type">Job Type</label>
                 <select
-                  id="type"
-                  name="type"
+                  id="job_type"
+                  name="job_type"
                   className="form-control"
-                  value={formData.type}
+                  value={formData.job_type}
                   onChange={handleInputChange}
                 >
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
+                  <option value="Full Time">Full Time</option>
+                  <option value="Part Time">Part Time</option>
                   <option value="Contract">Contract</option>
                   <option value="Internship">Internship</option>
                   <option value="Freelance">Freelance</option>
@@ -293,70 +335,53 @@ const AddJob = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="experience_level">Experience Level</label>
-                <select
-                  id="experience_level"
-                  name="experience_level"
+                <label htmlFor="salary">Salary (IDR)</label>
+                <input
+                  type="number"
+                  id="salary"
+                  name="salary"
                   className="form-control"
-                  value={formData.experience_level}
+                  value={formData.salary}
                   onChange={handleInputChange}
-                >
-                  <option value="Entry Level">Entry Level</option>
-                  <option value="Mid Level">Mid Level</option>
-                  <option value="Senior Level">Senior Level</option>
-                  <option value="Lead">Lead</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  name="status"
-                  className="form-control"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                  placeholder="10000000"
+                />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="salary_min">Minimum Salary (IDR)</label>
+                <label htmlFor="image_url">Company Logo URL</label>
                 <input
-                  type="number"
-                  id="salary_min"
-                  name="salary_min"
+                  type="url"
+                  id="image_url"
+                  name="image_url"
                   className="form-control"
-                  value={formData.salary_min}
+                  value={formData.image_url}
                   onChange={handleInputChange}
-                  placeholder="5000000"
+                  placeholder="https://example.com/logo.png"
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="salary_max">Maximum Salary (IDR)</label>
+                <label htmlFor="application_url">Application URL</label>
                 <input
-                  type="number"
-                  id="salary_max"
-                  name="salary_max"
+                  type="url"
+                  id="application_url"
+                  name="application_url"
                   className="form-control"
-                  value={formData.salary_max}
+                  value={formData.application_url}
                   onChange={handleInputChange}
-                  placeholder="10000000"
+                  placeholder="https://example.com/apply"
                 />
               </div>
             </div>
           </div>
 
           <div className="form-section">
-            <h3>Job Details</h3>
+            <h3>Job Description</h3>
 
             <div className="form-group">
-              <label htmlFor="description">Job Description</label>
+              <label htmlFor="description">Description</label>
               <textarea
                 id="description"
                 name="description"
@@ -367,44 +392,101 @@ const AddJob = () => {
                 placeholder="Describe the role and what the candidate will be doing..."
               />
             </div>
+          </div>
 
+          <div className="form-section">
+            <h3>Requirements</h3>
             <div className="form-group">
-              <label htmlFor="requirements">Requirements</label>
-              <textarea
-                id="requirements"
-                name="requirements"
-                className="form-control"
-                rows="5"
-                value={formData.requirements}
-                onChange={handleInputChange}
-                placeholder="List the qualifications and requirements..."
-              />
+              <label>Add Requirements (one by one)</label>
+              <div className="skill-input-group">
+                <input
+                  type="text"
+                  className="form-control"
+                  value={requirementInput}
+                  onChange={(e) => setRequirementInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddRequirement();
+                    }
+                  }}
+                  placeholder="Type a requirement and press Enter or click Add"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddRequirement}
+                  className="btn-add-skill"
+                >
+                  Add
+                </button>
+              </div>
             </div>
 
+            <div className="skills-list">
+              {formData.requirements.length > 0 ? (
+                formData.requirements.map((req, index) => (
+                  <span key={index} className="skill-tag">
+                    {req}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRequirement(req)}
+                      className="remove-skill"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <p className="text-muted">No requirements added yet</p>
+              )}
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Responsibilities</h3>
             <div className="form-group">
-              <label htmlFor="responsibilities">Responsibilities</label>
-              <textarea
-                id="responsibilities"
-                name="responsibilities"
-                className="form-control"
-                rows="5"
-                value={formData.responsibilities}
-                onChange={handleInputChange}
-                placeholder="What are the key responsibilities..."
-              />
+              <label>Add Responsibilities (one by one)</label>
+              <div className="skill-input-group">
+                <input
+                  type="text"
+                  className="form-control"
+                  value={responsibilityInput}
+                  onChange={(e) => setResponsibilityInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddResponsibility();
+                    }
+                  }}
+                  placeholder="Type a responsibility and press Enter or click Add"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddResponsibility}
+                  className="btn-add-skill"
+                >
+                  Add
+                </button>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="benefits">Benefits</label>
-              <textarea
-                id="benefits"
-                name="benefits"
-                className="form-control"
-                rows="4"
-                value={formData.benefits}
-                onChange={handleInputChange}
-                placeholder="What benefits does the company offer..."
-              />
+            <div className="skills-list">
+              {formData.responsibilities.length > 0 ? (
+                formData.responsibilities.map((resp, index) => (
+                  <span key={index} className="skill-tag">
+                    {resp}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveResponsibility(resp)}
+                      className="remove-skill"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <p className="text-muted">No responsibilities added yet</p>
+              )}
             </div>
           </div>
 
@@ -412,7 +494,7 @@ const AddJob = () => {
             <h3>Required Skills</h3>
 
             <div className="form-group">
-              <label>Add Skills</label>
+              <label>Add Skills (one by one)</label>
               <div className="skill-input-group">
                 <input
                   type="text"
@@ -438,8 +520,8 @@ const AddJob = () => {
             </div>
 
             <div className="skills-list">
-              {formData.required_skills.length > 0 ? (
-                formData.required_skills.map((skill, index) => (
+              {formData.skills.length > 0 ? (
+                formData.skills.map((skill, index) => (
                   <span key={index} className="skill-tag">
                     {skill}
                     <button

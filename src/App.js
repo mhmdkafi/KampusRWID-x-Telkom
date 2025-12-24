@@ -47,7 +47,7 @@ function App() {
               }
             />
             <Route
-              path="/admin/add-job"
+              path="/admin/jobs/add"
               element={
                 <AdminRoute>
                   <AddJob />
@@ -55,7 +55,7 @@ function App() {
               }
             />
             <Route
-              path="/admin/edit-job/:id"
+              path="/admin/jobs/edit/:id"
               element={
                 <AdminRoute>
                   <AddJob />

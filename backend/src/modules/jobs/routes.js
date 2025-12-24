@@ -2,6 +2,7 @@ import { supabaseAuth } from "../../config/supabaseAuth.js";
 import { requireRole } from "../../config/roleGuard.js";
 import {
   getJobs,
+  getJobsCount,
   getJobById,
   createJob,
   updateJob,
@@ -13,8 +14,14 @@ import {
 } from "./controller.js";
 
 export default async function jobsRoutes(fastify) {
-  // Public routes
+  // PENTING: /jobs/count HARUS SEBELUM /jobs/:id
+  // Karena Express/Fastify match dari atas ke bawah
+  fastify.get("/jobs/count", getJobsCount);
+
+  // List all jobs (with pagination)
   fastify.get("/jobs", getJobs);
+
+  // Public routes - GET by ID harus SETELAH /jobs/count
   fastify.get("/jobs/:id", getJobById);
 
   // Protected routes - Save/Unsave jobs
