@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import JobSlider from "../../components/JobSlider/JobSlider";
@@ -6,13 +6,12 @@ import AuthModal from "../../components/AuthModal/AuthModal";
 
 const Home = () => {
   const { user } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
-  const [authMode, setAuthMode] = React.useState("login"); // ADD: state untuk mode
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
   const navigate = useNavigate();
 
   const isAuthenticated = !!user;
 
-  // UPDATE: Tambah parameter mode
   const openAuthModal = (mode = "login") => {
     setAuthMode(mode);
     setIsAuthModalOpen(true);
@@ -24,7 +23,7 @@ const Home = () => {
 
   const handleJobMatchingClick = () => {
     if (!isAuthenticated) {
-      openAuthModal("login"); // Buka sebagai login
+      openAuthModal("login");
     } else {
       navigate("/matching");
     }
@@ -33,12 +32,11 @@ const Home = () => {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+        background:
+          "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
         minHeight: "100vh",
       }}
     >
-      {/* Header REMOVED - sudah ada di App.js */}
-
       <main style={{ padding: "100px 0 60px" }}>
         <div
           style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1rem" }}
@@ -373,7 +371,7 @@ const Home = () => {
                         justifyContent: "center",
                         transition: "all 0.3s ease",
                       }}
-                      onClick={() => openAuthModal("register")} // CHANGED: pass "register"
+                      onClick={() => openAuthModal("register")}
                       onMouseOver={(e) => {
                         e.target.style.background = "#22543d";
                         e.target.style.color = "white";
@@ -516,7 +514,6 @@ const Home = () => {
         </div>
       </main>
 
-      {/* UPDATE: Pass authMode as initialMode */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={closeAuthModal}

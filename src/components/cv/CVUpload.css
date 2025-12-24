@@ -265,6 +265,40 @@
     line-height: 1.5;
   }
   
+  /* Replace Warning */
+  .replace-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .replace-warning svg {
+    flex-shrink: 0;
+    color: #856404;
+    margin-top: 0.125rem;
+  }
+  
+  .replace-warning p {
+    margin: 0.25rem 0;
+    color: #856404;
+    font-size: 0.875rem;
+  }
+  
+  .replace-warning strong {
+    color: #664d03;
+    font-weight: 600;
+  }
+  
+  .replace-warning .text-muted {
+    color: #856404;
+    opacity: 0.8;
+  }
+  
   /* Responsive Design */
   @media (max-width: 768px) {
     .cv-upload-container {

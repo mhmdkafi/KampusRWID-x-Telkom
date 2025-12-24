@@ -90,12 +90,14 @@ const JobMatching = () => {
       console.log("✅ CV Analysis Complete:", analysis);
 
       setAnalysisResults(analysis);
+      
+      // PERBAIKAN: Langsung set ke step 2 setelah analisis selesai
       setCurrentStep(2);
+      setIsLoading(false);
     } catch (error) {
       console.error("❌ CV Upload/Analysis Error:", error);
       alert(`Failed to process CV: ${error.message}`);
       setCurrentStep(1);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -165,14 +167,13 @@ const JobMatching = () => {
     setCvFile(null);
     setAnalysisResults(null);
     setMatchResults([]);
-    // Jangan reset cvId, biar bisa load kembali
+    setCvId(null);
   };
 
   const handleViewAllJobs = () => {
     navigate("/jobs");
   };
 
-  // FIX: View Details button handler
   const handleViewJobDetails = (job) => {
     navigate(`/jobs/${job.id}`);
   };
@@ -212,7 +213,7 @@ const JobMatching = () => {
             </p>
           </div>
 
-          {/* CV Summary Card - FIXED */}
+          {/* CV Summary Card */}
           {analysisResults && (
             <div
               className="cv-summary-card mb-4 p-4"
@@ -227,7 +228,6 @@ const JobMatching = () => {
                 📄 Your CV Summary
               </h6>
               <div className="row g-3">
-                {/* HAPUS Type dan Match Score */}
                 <div className="col-md-6">
                   <small className="text-muted d-block">Skills Found</small>
                   <span
@@ -277,7 +277,7 @@ const JobMatching = () => {
             </div>
           )}
 
-          {/* Job Matches - PERBAIKI MATCH SCORE SIZE & HAPUS SAVE JOB */}
+          {/* Job Matches */}
           <div className="job-matches">
             {matchResults.map((job, index) => (
               <div
@@ -291,12 +291,12 @@ const JobMatching = () => {
               >
                 <div className="card-body p-4">
                   <div className="row align-items-center">
-                    {/* Match Score Circle - PERBESAR 4X */}
+                    {/* Match Score Circle */}
                     <div className="col-auto">
                       <div
                         className="score-circle"
                         style={{
-                          width: "120px", // 4x dari 70px
+                          width: "120px",
                           height: "120px",
                           borderRadius: "50%",
                           background: `conic-gradient(#22543d ${
@@ -310,7 +310,7 @@ const JobMatching = () => {
                       >
                         <div
                           style={{
-                            width: "100px", // 4x dari 56px
+                            width: "100px",
                             height: "100px",
                             borderRadius: "50%",
                             background: "white",
@@ -322,15 +322,13 @@ const JobMatching = () => {
                         >
                           <span
                             className="fw-bold"
-                            style={{ color: "#22543d", fontSize: "2.5rem" }} // 4x dari 1.3rem
+                            style={{ color: "#22543d", fontSize: "2.5rem" }}
                           >
                             {job.matchScore}%
                           </span>
                           <small
                             style={{ fontSize: "0.9rem", color: "#64748b" }}
                           >
-                            {" "}
-                            {/* 4x dari 0.65rem */}
                             match
                           </small>
                         </div>
@@ -378,10 +376,10 @@ const JobMatching = () => {
                         </ul>
                       </div>
 
-                      {/* Job Actions - HAPUS SAVE JOB */}
+                      {/* Job Actions */}
                       <div className="job-actions mt-3">
                         <button
-                          onClick={() => handleViewJobDetails(job)} // FIXED
+                          onClick={() => handleViewJobDetails(job)}
                           className="btn btn-sm"
                           style={{
                             background: "#22543d",
