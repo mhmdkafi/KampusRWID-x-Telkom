@@ -11,7 +11,6 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageJobs from "./pages/Admin/ManageJobs";
 import ManageUsers from "./pages/Admin/ManageUsers";
 import ManageCVs from "./pages/Admin/ManageCVs";
-import AccuracyDashboard from "./components/AccuracyDashboard/AccuracyDashboard";
 import { AdminRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import "./App.css";
@@ -76,14 +75,6 @@ function App() {
               element={
                 <AdminRoute>
                   <ManageCVs />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/accuracy"
-              element={
-                <AdminRoute>
-                  <AccuracyDashboard />
                 </AdminRoute>
               }
             />
