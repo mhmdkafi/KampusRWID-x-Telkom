@@ -16,7 +16,8 @@ const ManageUsers = () => {
   const [newRole, setNewRole] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const { notification, showNotification, hideNotification } = useNotification();
+  const { notification, showNotification, hideNotification } =
+    useNotification();
 
   const roleOptions = [
     { value: "user", label: "User" },
@@ -55,7 +56,6 @@ const ManageUsers = () => {
         id: user.id,
         email: user.email || "N/A",
         role: user.role || "user",
-        emailVerified: user.email_verified || false,
         createdAt: user.created_at
           ? new Date(user.created_at).toLocaleDateString()
           : "N/A",
@@ -66,8 +66,14 @@ const ManageUsers = () => {
     } catch (error) {
       console.error("Error fetching users:", error);
 
-      if (error.message?.includes("Admin access required") || error.message?.includes("403")) {
-        showNotification("You don't have permission to view users. Admin access required.", "error");
+      if (
+        error.message?.includes("Admin access required") ||
+        error.message?.includes("403")
+      ) {
+        showNotification(
+          "You don't have permission to view users. Admin access required.",
+          "error"
+        );
         navigate("/admin/dashboard");
       } else {
         showNotification("Failed to fetch users: " + error.message, "error");
@@ -241,10 +247,9 @@ const ManageUsers = () => {
             <table className="users-table">
               <thead>
                 <tr>
-                  <th>User</th>
                   <th>Email</th>
+                  <th>Full Name</th>
                   <th>Role</th>
-                  <th>Status</th>
                   <th>Joined</th>
                   <th>Actions</th>
                 </tr>
@@ -252,7 +257,7 @@ const ManageUsers = () => {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-4">
+                    <td colSpan="5" className="text-center py-4">
                       <div className="py-4">
                         <svg
                           width="48"
@@ -273,15 +278,8 @@ const ManageUsers = () => {
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id}>
-                      <td>
-                        <div className="user-name-cell">
-                          <div className="user-avatar">
-                            {user.fullName.charAt(0).toUpperCase()}
-                          </div>
-                          <span>{user.fullName}</span>
-                        </div>
-                      </td>
                       <td>{user.email}</td>
+                      <td>{user.fullName}</td>
                       <td>
                         <span
                           className={`badge-role ${
@@ -289,17 +287,6 @@ const ManageUsers = () => {
                           }`}
                         >
                           {user.role}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            user.emailVerified
-                              ? "badge-verified"
-                              : "badge-unverified"
-                          }
-                        >
-                          {user.emailVerified ? "Verified" : "Unverified"}
                         </span>
                       </td>
                       <td>{user.createdAt}</td>
@@ -374,9 +361,6 @@ const ManageUsers = () => {
             filteredUsers.map((user) => (
               <div key={user.id} className="user-card">
                 <div className="user-card-header">
-                  <div className="user-card-avatar">
-                    {user.fullName.charAt(0).toUpperCase()}
-                  </div>
                   <div className="user-card-info">
                     <h3>{user.fullName}</h3>
                     <p className="user-email">{user.email}</p>
@@ -415,35 +399,21 @@ const ManageUsers = () => {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                        <polyline points="22 4 12 14.01 9 11.01" />
-                      </svg>
-                      <span
-                        className={
-                          user.emailVerified
-                            ? "badge-verified"
-                            : "badge-unverified"
-                        }
-                      >
-                        {user.emailVerified ? "Verified" : "Unverified"}
-                      </span>
-                    </div>
-
-                    <div className="detail-item">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <rect
+                          x="3"
+                          y="4"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          ry="2"
+                        />
                         <line x1="16" y1="2" x2="16" y2="6" />
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
-                      <span className="text-muted">Joined {user.createdAt}</span>
+                      <span className="text-muted">
+                        Joined {user.createdAt}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -495,15 +465,18 @@ const ManageUsers = () => {
 
       {/* Edit Role Modal */}
       {editingUser && (
-        <div className="modal-overlay" onClick={() => {
-          setEditingUser(null);
-          setIsSelectOpen(false);
-        }}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setEditingUser(null);
+            setIsSelectOpen(false);
+          }}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Edit User Role</h3>
             <div className="user-info">
               <p>
-                <strong>Name:</strong> {editingUser.fullName}
+                <strong>Full Name:</strong> {editingUser.fullName}
               </p>
               <p>
                 <strong>Email:</strong> {editingUser.email}
@@ -521,7 +494,8 @@ const ManageUsers = () => {
                 >
                   <div className="custom-select-trigger">
                     <span>
-                      {roleOptions.find((opt) => opt.value === newRole)?.label || "Select Role"}
+                      {roleOptions.find((opt) => opt.value === newRole)
+                        ?.label || "Select Role"}
                     </span>
                     <svg
                       className="chevron-icon"
@@ -580,7 +554,10 @@ const ManageUsers = () => {
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Confirm Delete</h3>
-            <p>Are you sure you want to delete user: <strong>{confirmDelete.email}</strong>?</p>
+            <p>
+              Are you sure you want to delete user:{" "}
+              <strong>{confirmDelete.email}</strong>?
+            </p>
             <p className="text-danger">⚠️ This action cannot be undone.</p>
             <div className="modal-actions">
               <button
@@ -589,8 +566,8 @@ const ManageUsers = () => {
               >
                 Cancel
               </button>
-              <button 
-                onClick={() => handleDeleteUser(confirmDelete.id)} 
+              <button
+                onClick={() => handleDeleteUser(confirmDelete.id)}
                 className="btn-danger"
               >
                 Delete User
