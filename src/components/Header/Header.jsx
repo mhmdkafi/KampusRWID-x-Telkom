@@ -72,7 +72,9 @@ function Header() {
                   <li className="nav-item">
                     <Link
                       to="/jobs"
-                      className={`nav-link ${isActive("/jobs") ? "active" : ""}`}
+                      className={`nav-link ${
+                        isActive("/jobs") ? "active" : ""
+                      }`}
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Jobs
@@ -181,7 +183,14 @@ function Header() {
                               stroke="currentColor"
                               strokeWidth="2"
                             >
-                              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                              <rect
+                                x="2"
+                                y="7"
+                                width="20"
+                                height="14"
+                                rx="2"
+                                ry="2"
+                              />
                               <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                             </svg>
                             Manage Jobs
@@ -229,26 +238,6 @@ function Header() {
                               <polyline points="14 2 14 8 20 8" />
                             </svg>
                             Manage CVs
-                          </Link>
-                          <Link
-                            to="/admin/accuracy"
-                            className="dropdown-item"
-                            onClick={() => {
-                              setShowAdminMenu(false);
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <svg
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                            </svg>
-                            Accuracy Test
                           </Link>
                         </div>
                       )}
