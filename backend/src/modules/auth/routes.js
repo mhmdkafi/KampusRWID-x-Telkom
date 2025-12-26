@@ -1,8 +1,8 @@
 import { authGuard } from "../../config/supabaseAuth.js";
-import { me } from "./controller.js";
+import { me, resetPassword } from "./controller.js";
 
 export async function authRoutes(fastify) {
-  // Ganti dari /me jadi /auth/me
+  // Get current user
   fastify.get(
     "/auth/me",
     {
@@ -10,4 +10,7 @@ export async function authRoutes(fastify) {
     },
     me
   );
+
+  // Reset password (public endpoint)
+  fastify.post("/auth/reset-password", resetPassword);
 }

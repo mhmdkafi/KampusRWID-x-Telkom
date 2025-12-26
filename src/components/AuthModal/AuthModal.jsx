@@ -5,11 +5,16 @@ import "./AuthModal.css";
 const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
   const { signUp, signIn } = useAuth();
   const [isLogin, setIsLogin] = useState(initialMode === "login");
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showForgotPasswordPrompt, setShowForgotPasswordPrompt] =
+    useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     fullName: "",
     confirmPassword: "",
+    newPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,6 +24,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
   useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode === "login");
+      setIsForgotPassword(false);
+      setShowForgotPasswordPrompt(false);
+      setLoginAttempts(0);
     }
   }, [initialMode, isOpen]);
 
@@ -27,11 +35,96 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError(""); // Clear error saat user mengetik
+    setError("");
+    setShowForgotPasswordPrompt(false);
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // Validasi password baru
+      if (formData.newPassword.length < 6) {
+        setError("Password baru minimal 6 karakter!");
+        setIsLoading(false);
+        return;
+      }
+
+      if (formData.newPassword !== formData.confirmPassword) {
+        setError("Password baru tidak sama!");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!formData.fullName.trim()) {
+        setError("Nama lengkap harus diisi untuk verifikasi!");
+        setIsLoading(false);
+        return;
+      }
+
+      // Call backend API untuk reset password
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_URL || "http://127.0.0.1:4000/api"
+        }/auth/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            fullName: formData.fullName,
+            newPassword: formData.newPassword,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Gagal reset password");
+      }
+
+      setSuccess(
+        "Password berhasil diubah! Silakan login dengan password baru."
+      );
+
+      // Auto switch ke login setelah 1 detik
+      setTimeout(() => {
+        setIsForgotPassword(false);
+        setIsLogin(true);
+        setFormData({
+          email: formData.email,
+          password: "",
+          fullName: "",
+          confirmPassword: "",
+          newPassword: "",
+        });
+        setSuccess("");
+        setShowForgotPasswordPrompt(false);
+      }, 1000);
+    } catch (err) {
+      console.error("Reset password error:", err);
+      setError(
+        err.message ||
+          "Email atau nama lengkap tidak cocok dengan data yang terdaftar."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isForgotPassword) {
+      return handleForgotPassword(e);
+    }
+
     setIsLoading(true);
     setError("");
     setSuccess("");
@@ -39,21 +132,35 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
     try {
       if (isLogin) {
         // LOGIN
-        await signIn(formData.email, formData.password);
-        setSuccess("Login berhasil! Redirecting...");
-        setTimeout(() => {
-          onClose();
-          // Reset form
-          setFormData({
-            email: "",
-            password: "",
-            fullName: "",
-            confirmPassword: "",
-          });
-        }, 1000);
+        try {
+          await signIn(formData.email, formData.password);
+          setSuccess("Login berhasil! Redirecting...");
+          setShowForgotPasswordPrompt(false);
+          setLoginAttempts(0);
+          setTimeout(() => {
+            onClose();
+            setFormData({
+              email: "",
+              password: "",
+              fullName: "",
+              confirmPassword: "",
+              newPassword: "",
+            });
+          }, 1000);
+        } catch (loginError) {
+          // Increment login attempts
+          const newAttempts = loginAttempts + 1;
+          setLoginAttempts(newAttempts);
+
+          // Show forgot password prompt after 1 failed attempt
+          if (newAttempts >= 1) {
+            setShowForgotPasswordPrompt(true);
+          }
+
+          throw loginError;
+        }
       } else {
         // SIGN UP
-        // Validasi password
         if (formData.password !== formData.confirmPassword) {
           setError("Password tidak sama!");
           setIsLoading(false);
@@ -74,25 +181,35 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
 
         await signUp(formData.email, formData.password, formData.fullName);
 
-        setSuccess(
-          "Registrasi berhasil! Silakan login"
-        );
+        setSuccess("Registrasi berhasil! Silakan login");
 
-        // Auto switch ke login setelah 3 detik
         setTimeout(() => {
           setIsLogin(true);
           setFormData({
-            email: formData.email, // Keep email untuk login
+            email: formData.email,
             password: "",
             fullName: "",
             confirmPassword: "",
+            newPassword: "",
           });
           setSuccess("");
-        }, 3000);
+        }, 2000);
       }
     } catch (err) {
       console.error("Auth error:", err);
-      setError(err.message || "Terjadi kesalahan. Silakan coba lagi.");
+
+      // Custom error messages
+      let errorMessage = err.message || "Terjadi kesalahan. Silakan coba lagi.";
+
+      if (errorMessage.includes("Invalid login credentials")) {
+        errorMessage = "Email atau password salah!";
+      } else if (errorMessage.includes("Email not confirmed")) {
+        errorMessage = "Email belum diverifikasi. Silakan cek inbox Anda.";
+      } else if (errorMessage.includes("User already registered")) {
+        errorMessage = "Email sudah terdaftar. Silakan login.";
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -100,11 +217,46 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
+    setIsForgotPassword(false);
+    setShowForgotPasswordPrompt(false);
+    setLoginAttempts(0);
     setFormData({
       email: "",
       password: "",
       fullName: "",
       confirmPassword: "",
+      newPassword: "",
+    });
+    setError("");
+    setSuccess("");
+  };
+
+  const showForgotPassword = () => {
+    setIsForgotPassword(true);
+    setIsLogin(false);
+    setShowForgotPasswordPrompt(false);
+    setFormData({
+      email: formData.email, // Keep email
+      password: "",
+      fullName: "",
+      confirmPassword: "",
+      newPassword: "",
+    });
+    setError("");
+    setSuccess("");
+  };
+
+  const backToLogin = () => {
+    setIsForgotPassword(false);
+    setIsLogin(true);
+    setShowForgotPasswordPrompt(false);
+    setLoginAttempts(0);
+    setFormData({
+      email: formData.email, // Keep email
+      password: "",
+      fullName: "",
+      confirmPassword: "",
+      newPassword: "",
     });
     setError("");
     setSuccess("");
@@ -153,14 +305,23 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
             <div className="auth-logo">
               <div className="logo-circle">
                 <svg
-                  width="20"
-                  height="20"
+                  width="25"
+                  height="25"
                   viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    d="M20 6L9 17L4 12"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="12"
+                    cy="7"
+                    r="4"
                     stroke="white"
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -169,130 +330,199 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
                 </svg>
               </div>
             </div>
-            <h2>{isLogin ? "Masuk ke Akun" : "Daftar Akun Baru"}</h2>
+            <h2>
+              {isForgotPassword
+                ? "Reset Password"
+                : isLogin
+                ? "Selamat Datang Kembali"
+                : "Buat Akun Baru"}
+            </h2>
             <p>
-              {isLogin
-                ? "Masuk untuk mengakses fitur Job Matching"
-                : "Buat akun untuk memulai pencarian kerja"}
+              {isForgotPassword
+                ? "Masukkan email, nama lengkap, dan password baru"
+                : isLogin
+                ? "Masuk untuk melanjutkan"
+                : "Daftar untuk memulai perjalanan karir Anda"}
             </p>
-
-            {error && (
-              <div className="auth-message error">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="#dc2626"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M12 8V12"
-                    stroke="#dc2626"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M12 16H12.01"
-                    stroke="#dc2626"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="auth-message success">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="#059669"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M9 12L11 14L15 10"
-                    stroke="#059669"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span>{success}</span>
-              </div>
-            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            {!isLogin && (
+          {error && (
+            <div className="auth-message error">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <line
+                  x1="12"
+                  y1="8"
+                  x2="12"
+                  y2="12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle cx="12" cy="16" r="1" fill="currentColor" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="auth-message success">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M20 6L9 17l-5-5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>{success}</span>
+            </div>
+          )}
+
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="Masukkan email Anda"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+              {!isForgotPassword && (
               <div className="form-group">
-                <label>Nama Lengkap</label>
+                <label htmlFor="password">Password</label>
                 <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
+                  type="password"
+                  id="password"
+                  name="password"
+                  placeholder={
+                    isLogin ? "Masukkan password" : "Minimal 6 karakter"
+                  }
+                  value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="Masukkan nama lengkap"
                   required
                   disabled={isLoading}
                 />
               </div>
             )}
 
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="contoh@email.com"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Masukkan password (min. 6 karakter)"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {!isLogin && (
-              <div className="form-group">
-                <label>Konfirmasi Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Ulangi password"
-                  required
+            {/* Forgot password link - only show after failed login */}
+            {isLogin && !isForgotPassword && showForgotPasswordPrompt && (
+              <div className="forgot-password-link">
+                <button
+                  className="forgot-password-btn"
+                  onClick={showForgotPassword}
                   disabled={isLoading}
-                />
+                  type="button"
+                >
+                  Lupa password?
+                </button>
               </div>
+            )}
+
+            {!isLogin && !isForgotPassword && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="fullName">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Masukkan nama lengkap"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">Konfirmasi Password</label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Ulangi password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </>
+            )}
+
+            {isForgotPassword && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="fullName">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Masukkan nama lengkap untuk verifikasi"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                  />
+                  <span className="form-text">
+                    Harus sama dengan nama saat registrasi
+                  </span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="newPassword">Password Baru</label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    name="newPassword"
+                    placeholder="Minimal 6 karakter"
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">
+                    Konfirmasi Password Baru
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Ulangi password baru"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </>
             )}
 
             <button
@@ -303,60 +533,42 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
               {isLoading ? (
                 <>
                   <div className="spinner"></div>
-                  {isLogin ? "Masuk..." : "Mendaftar..."}
+                  <span>Loading...</span>
                 </>
+              ) : isForgotPassword ? (
+                "Reset Password"
+              ) : isLogin ? (
+                "Masuk"
               ) : (
-                <>
-                  <svg
-                    className="me-2"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M15 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H15"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <polyline
-                      points="10,17 15,12 10,7"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <line
-                      x1="21"
-                      y1="12"
-                      x2="3"
-                      y2="12"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  {isLogin ? "Masuk" : "Daftar"}
-                </>
+                "Daftar"
               )}
             </button>
           </form>
 
           <div className="auth-toggle">
-            <p>
-              {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}
-              <button
-                onClick={toggleMode}
-                className="toggle-btn"
-                disabled={isLoading}
-              >
-                {isLogin ? "Daftar di sini" : "Masuk di sini"}
-              </button>
-            </p>
+            {isForgotPassword ? (
+              <p>
+                Sudah ingat password?
+                <button
+                  className="toggle-btn"
+                  onClick={backToLogin}
+                  disabled={isLoading}
+                >
+                  Kembali ke Login
+                </button>
+              </p>
+            ) : (
+              <p>
+                {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}
+                <button
+                  className="toggle-btn"
+                  onClick={toggleMode}
+                  disabled={isLoading}
+                >
+                  {isLogin ? "Daftar sekarang" : "Masuk di sini"}
+                </button>
+              </p>
+            )}
           </div>
         </div>
       </div>
