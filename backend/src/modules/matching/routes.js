@@ -1,17 +1,15 @@
-import { supabaseAuth } from "../../config/supabaseAuth.js";
-import {
-  saveRecommendations,
-  getLatestRecommendations,
-} from "./controller.js";
+import { saveRecommendations, getLatestRecommendations } from "./controller.js";
 
 export default async function recommendationsRoutes(fastify) {
-  fastify.post("/recommendations", {
-    preHandler: [supabaseAuth],
-    handler: saveRecommendations,
-  });
+  fastify.post(
+    "/recommendations",
+    { preHandler: saveRecommendations[0] },
+    saveRecommendations[1]
+  );
 
-  fastify.get("/recommendations/latest", {
-    preHandler: [supabaseAuth],
-    handler: getLatestRecommendations,
-  });
+  fastify.get(
+    "/recommendations/latest",
+    { preHandler: getLatestRecommendations[0] },
+    getLatestRecommendations[1]
+  );
 }

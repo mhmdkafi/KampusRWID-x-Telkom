@@ -1,93 +1,59 @@
-import { supabase } from "../../config/supabase.js";
+import { authGuard } from "../../config/supabaseAuth.js";
+import { MatchingService } from "./service.js";
 
-export const saveRecommendations = async (request, reply) => {
-  const userId = request.user?.sub || request.user?.id;
-  const { cv_id, recommendations, cv_analysis } = request.body;
+const matchingService = new MatchingService();
 
-  if (!cv_id || !recommendations || !Array.isArray(recommendations)) {
-    return reply.code(400).send({
-      error: "cv_id and recommendations array required",
-    });
-  }
+export const saveRecommendations = [
+  authGuard(),
+  async (request, reply) => {
+    const userId = request.user?.sub || request.user?.id;
+    const { cv_id, recommendations, cv_analysis } = request.body;
 
-  try {
-    // Check if already exists for this cv_id
-    const { data: existing } = await supabase
-      .from("job_recommendations")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("cv_id", cv_id)
-      .maybeSingle();
+    try {
+      const result = await matchingService.saveRecommendations(
+        userId,
+        cv_id,
+        recommendations,
+        cv_analysis
+      );
 
-    let result;
+      return {
+        message: "Recommendations saved successfully",
+        recommendation: result,
+      };
+    } catch (error) {
+      request.log.error(
+        { error: error.message },
+        "Save recommendations failed"
+      );
 
-    if (existing) {
-      // Update existing
-      const { data, error } = await supabase
-        .from("job_recommendations")
-        .update({
-          recommendations,
-          cv_analysis,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      result = data;
-    } else {
-      // Insert new
-      const { data, error } = await supabase
-        .from("job_recommendations")
-        .insert({
-          user_id: userId,
-          cv_id,
-          recommendations,
-          cv_analysis,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      result = data;
+      const status = error.status || 500;
+      return reply.code(status).send({
+        error: error.message || "Failed to save recommendations",
+      });
     }
+  },
+];
 
-    return {
-      message: "Recommendations saved successfully",
-      recommendation: result,
-    };
-  } catch (error) {
-    console.error("Save recommendations error:", error);
-    return reply.code(500).send({
-      error: "Failed to save recommendations",
-      message: error.message,
-    });
-  }
-};
+export const getLatestRecommendations = [
+  authGuard(),
+  async (request, reply) => {
+    const userId = request.user?.sub || request.user?.id;
 
-export const getLatestRecommendations = async (request, reply) => {
-  const userId = request.user?.sub || request.user?.id;
+    try {
+      const recommendation = await matchingService.getLatestRecommendations(
+        userId
+      );
 
-  try {
-    const { data, error } = await supabase
-      .from("job_recommendations")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      return {
+        recommendation,
+      };
+    } catch (error) {
+      request.log.error({ error: error.message }, "Get recommendations failed");
 
-    if (error) throw error;
-
-    return {
-      recommendation: data,
-    };
-  } catch (error) {
-    console.error("Get recommendations error:", error);
-    return reply.code(500).send({
-      error: "Failed to get recommendations",
-      message: error.message,
-    });
-  }
-};
+      return reply.code(500).send({
+        error: "Failed to get recommendations",
+      });
+    }
+  },
+];

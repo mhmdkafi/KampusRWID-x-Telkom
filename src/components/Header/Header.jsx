@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AuthModal from "../AuthModal/AuthModal";
 import "./Header.css";
@@ -10,8 +10,15 @@ function Header() {
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path) => location.pathname === path;
+
+  const handleLogout = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+    navigate("/");
+  };
 
   if (loading) {
     return (
@@ -254,13 +261,7 @@ function Header() {
                         {isAdmin() && (
                           <span className="admin-badge">Admin</span>
                         )}
-                        <button
-                          onClick={() => {
-                            signOut();
-                            setMobileMenuOpen(false);
-                          }}
-                          className="logout-btn"
-                        >
+                        <button onClick={handleLogout} className="logout-btn">
                           Logout
                         </button>
                       </div>

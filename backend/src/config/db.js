@@ -3,12 +3,13 @@ import { env } from "./env.js";
 
 const { Pool } = pg;
 
+// Pool configuration (fallback untuk transaction kompleks)
 const connectionConfig = {
   connectionString: env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
-  max: 10,
+  max: 5, // Reduce dari 10 karena jarang dipakai
   options: "-c search_path=public",
 };
 
@@ -18,8 +19,11 @@ pool.on("error", (err) => {
   console.error("PostgreSQL pool error:", err);
 });
 
-// Pool akan connect otomatis saat ada query pertama
-
+/**
+ * Execute work within a database transaction
+ * @param {Function} work - Async function that receives client as parameter
+ * @returns {Promise<any>} Result from work function
+ */
 export async function withTransaction(work) {
   const client = await pool.connect();
   try {

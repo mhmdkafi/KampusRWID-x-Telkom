@@ -41,9 +41,11 @@ async function getAuthToken() {
 
 // Jobs API
 export async function getJobs(userId = null) {
-  const url = userId
-    ? `${API_BASE_URL}/jobs?user_id=${userId}`
-    : `${API_BASE_URL}/jobs`;
+  let url = `${API_BASE_URL}/jobs?limit=20`;
+  
+  if (userId) {
+    url += `&user_id=${userId}`;
+  }
 
   const res = await fetch(url);
   if (!res.ok) throw new Error("Gagal mengambil jobs");

@@ -1,42 +1,43 @@
 import { supabase } from "../../config/supabase.js";
-import { pool } from "../../config/db.js";
-import { JobsRepository } from "./repository.js";
 
-export class PgJobsRepository extends JobsRepository {
+export class PgJobsRepository {
   async listAll({ limit = 10, offset = 0 } = {}) {
     const { data, error } = await supabase
       .from("jobs")
-      .select(
-        "id, title, company, location, skills, description, salary, job_type, image_url, requirements, responsibilities, application_url, created_at, updated_at"
-      )
+      .select("*")
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) throw new Error(`Failed to list jobs: ${error.message}`);
     return data || [];
   }
 
   async findById(id) {
-    // Pastikan id adalah integer
-    const jobId = parseInt(id, 10);
-    if (isNaN(jobId)) {
-      throw new Error("Invalid job ID");
-    }
-
-    // GUNAKAN SUPABASE UNTUK MENGHINDARI CONNECTION LEAK
     const { data, error } = await supabase
       .from("jobs")
       .select("*")
-      .eq("id", jobId)
+      .eq("id", id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw new Error(`Failed to find job: ${error.message}`);
     return data || null;
+  }
+
+  async create(jobData) {
+    const { data, error } = await supabase
+      .from("jobs")
+      .insert([jobData])
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create job: ${error.message}`);
+    return data;
   }
 
   async bulkInsert(jobs) {
     const { error } = await supabase.from("jobs").insert(jobs);
-    if (error) throw error;
+
+    if (error) throw new Error(`Failed to bulk insert jobs: ${error.message}`);
   }
 
   async update(id, jobData) {
@@ -46,13 +47,24 @@ export class PgJobsRepository extends JobsRepository {
       .eq("id", id)
       .select()
       .maybeSingle();
-    if (error) throw error;
+
+    if (error) throw new Error(`Failed to update job: ${error.message}`);
     return data || null;
   }
 
   async delete(id) {
     const { error } = await supabase.from("jobs").delete().eq("id", id);
-    if (error) throw error;
+
+    if (error) throw new Error(`Failed to delete job: ${error.message}`);
+  }
+
+  async getCount() {
+    const { count, error } = await supabase
+      .from("jobs")
+      .select("*", { count: "exact", head: true });
+
+    if (error) throw new Error(`Failed to get jobs count: ${error.message}`);
+    return count || 0;
   }
 
   // Saved Jobs Methods
@@ -62,7 +74,12 @@ export class PgJobsRepository extends JobsRepository {
       .insert({ user_id: userId, job_id: jobId })
       .select()
       .maybeSingle();
-    if (error && error.code !== "23505") throw error; // ignore unique violation
+
+    // Ignore unique constraint violation (23505)
+    if (error && error.code !== "23505") {
+      throw new Error(`Failed to save job: ${error.message}`);
+    }
+
     return data || { user_id: userId, job_id: jobId };
   }
 
@@ -72,7 +89,8 @@ export class PgJobsRepository extends JobsRepository {
       .delete()
       .eq("user_id", userId)
       .eq("job_id", jobId);
-    if (error) throw error;
+
+    if (error) throw new Error(`Failed to unsave job: ${error.message}`);
   }
 
   async getSavedJobs(userId) {
@@ -82,43 +100,48 @@ export class PgJobsRepository extends JobsRepository {
         `
         id,
         created_at,
-        job:jobs (
-          id, title, company, location, skills, description, salary,
-          job_type, image_url, requirements, responsibilities, application_url,
-          created_at, updated_at
-        )
+        job:jobs (*)
       `
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    if (error) throw new Error(`getSavedJobs error: ${error.message}`);
+    if (error) throw new Error(`Failed to get saved jobs: ${error.message}`);
 
+    // Extract jobs from join result
     const jobs = (data || []).map((row) => row.job).filter(Boolean);
-
     return jobs;
   }
 
-  // FIX: Hapus duplicate, gunakan Supabase untuk konsistensi
-  async isSaved(userId, jobId) {
-    try {
-      const { data, error } = await supabase
-        .from("saved_jobs")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("job_id", jobId)
-        .limit(1)
-        .maybeSingle();
+  async getSavedJobIds(userId) {
+    const { data, error } = await supabase
+      .from("saved_jobs")
+      .select("job_id")
+      .eq("user_id", userId);
 
-      if (error && error.code !== "PGRST116") {
-        console.error("isSaved error:", error);
-        return false; // Return false instead of throwing
-      }
+    if (error) throw new Error(`Failed to get saved job IDs: ${error.message}`);
 
-      return !!data;
-    } catch (error) {
-      console.error("isSaved catch error:", error);
-      return false; // Return false on any error
+    const savedJobIds = new Set();
+    if (data) {
+      data.forEach((item) => savedJobIds.add(item.job_id));
     }
+
+    return savedJobIds;
+  }
+
+  async isSaved(userId, jobId) {
+    const { data, error } = await supabase
+      .from("saved_jobs")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("job_id", jobId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`Failed to check if job is saved: ${error.message}`);
+    }
+
+    return !!data;
   }
 }

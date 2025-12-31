@@ -27,6 +27,19 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
       setIsForgotPassword(false);
       setShowForgotPasswordPrompt(false);
       setLoginAttempts(0);
+      setError("");
+      setSuccess(""); // Clear success
+    } else {
+      // PERBAIKAN: Clear semua saat modal ditutup
+      setError("");
+      setSuccess("");
+      setFormData({
+        email: "",
+        password: "",
+        fullName: "",
+        confirmPassword: "",
+        newPassword: "",
+      });
     }
   }, [initialMode, isOpen]);
 
@@ -137,8 +150,10 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
           setSuccess("Login berhasil! Redirecting...");
           setShowForgotPasswordPrompt(false);
           setLoginAttempts(0);
+
+          // PERBAIKAN: Clear success sebelum close
           setTimeout(() => {
-            onClose();
+            setSuccess(""); // Clear success message
             setFormData({
               email: "",
               password: "",
@@ -146,7 +161,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
               confirmPassword: "",
               newPassword: "",
             });
-          }, 1000);
+            onClose();
+          }, 800); // Kurangi delay dari 1000 ke 800
         } catch (loginError) {
           // Increment login attempts
           const newAttempts = loginAttempts + 1;
@@ -413,7 +429,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = "login" }) => {
               />
             </div>
 
-              {!isForgotPassword && (
+            {!isForgotPassword && (
               <div className="form-group">
                 <label htmlFor="password">Password</label>
                 <input
