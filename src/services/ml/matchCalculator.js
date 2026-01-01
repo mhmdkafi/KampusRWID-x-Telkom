@@ -2,10 +2,9 @@ class MatchCalculator {
   constructor() {
     // Enhanced matching weights for 80%+ accuracy
     this.weights = {
-      cvType: 45, // CV type match importance
-      skills: 30, // Skills match importance
-      experience: 20, // Experience level match
-      keywords: 5, // Keyword match bonus
+      cvType: 55, // CV type match importance
+      skills: 35, // Skills match importance
+      keywords: 10, // Keyword match bonus
     };
 
     // Enhanced CV type to job category mapping for better accuracy
@@ -95,17 +94,12 @@ class MatchCalculator {
     // Calculate individual scores
     const typeScore = this.calculateTypeMatch(cvAnalysis.cvType, job.title);
     const skillsScore = this.calculateSkillsMatch(cvAnalysis, job);
-    const experienceScore = this.calculateExperienceMatch(
-      cvAnalysis.experienceYears || 0,
-      job.experience_required || job.experience || ""
-    );
     const keywordScore = this.calculateKeywordMatch(cvAnalysis, job);
 
     // Weighted final score
     const finalScore =
       (typeScore * this.weights.cvType +
         skillsScore * this.weights.skills +
-        experienceScore * this.weights.experience +
         keywordScore * this.weights.keywords) /
       100;
 
@@ -122,7 +116,6 @@ class MatchCalculator {
       breakdown: {
         typeScore,
         skillsScore,
-        experienceScore,
         keywordScore,
       },
     };
@@ -150,7 +143,8 @@ class MatchCalculator {
     const jobTitleLower = jobTitle.toLowerCase();
     const cvTypeLower = cvType.toLowerCase();
 
-    for (const [category, keywords] of Object.entries(this.cvTypeMapping)) {
+    // Ubah: hapus 'category' karena tidak dipakai
+    for (const keywords of Object.values(this.cvTypeMapping)) {
       const cvMatchesCategory = keywords.some((kw) => cvTypeLower.includes(kw));
       const jobMatchesCategory = keywords.some((kw) =>
         jobTitleLower.includes(kw)
@@ -210,43 +204,6 @@ class MatchCalculator {
     return false;
   }
 
-  // Enhanced Experience Matching with Smart Level Detection
-  calculateExperienceMatch(cvExperienceYears, jobExperience) {
-    if (!jobExperience) return 80; // No specific experience required
-
-    const jobExpLower = jobExperience.toLowerCase();
-
-    // Extract years from job requirement
-    const yearMatch = jobExpLower.match(/(\d+)[+\-]?\s*(?:years?|tahun)/i);
-    const requiredYears = yearMatch ? parseInt(yearMatch[1]) : null;
-
-    if (requiredYears !== null) {
-      const diff = Math.abs(cvExperienceYears - requiredYears);
-      if (diff === 0) return 100;
-      if (diff <= 1) return 90;
-      if (diff <= 2) return 75;
-      if (diff <= 3) return 60;
-      return 40;
-    }
-
-    // Match experience levels
-    if (jobExpLower.includes("senior") && cvExperienceYears >= 5) return 100;
-    if (jobExpLower.includes("mid") && cvExperienceYears >= 3) return 100;
-    if (
-      (jobExpLower.includes("junior") || jobExpLower.includes("entry")) &&
-      cvExperienceYears <= 2
-    )
-      return 100;
-    if (
-      jobExpLower.includes("fresh") ||
-      jobExpLower.includes("graduate") ||
-      jobExpLower.includes("intern")
-    )
-      return 100;
-
-    return 70; // Default
-  }
-
   // Enhanced keyword matching
   calculateKeywordMatch(cvAnalysis, job) {
     const cvText = `${cvAnalysis.cvType} ${cvAnalysis.skillsFound?.join(" ")} ${
@@ -264,7 +221,7 @@ class MatchCalculator {
   }
 
   // Enhanced detailed reasoning generation
-  generateDetailedMatchReasons(cvAnalysis, job, matchScore) {
+  generateDetailedMatchReasons(cvAnalysis, job) {
     const reasons = [];
 
     // Skills match
@@ -274,15 +231,6 @@ class MatchCalculator {
         `Memiliki ${matchingSkills.length} skill yang sesuai: ${matchingSkills
           .slice(0, 3)
           .join(", ")}`
-      );
-    }
-
-    // Experience match
-    if (matchScore >= 70) {
-      reasons.push(
-        `Pengalaman sesuai dengan level yang dibutuhkan (${
-          job.experience_required || job.experience || "Tidak disebutkan"
-        })`
       );
     }
 

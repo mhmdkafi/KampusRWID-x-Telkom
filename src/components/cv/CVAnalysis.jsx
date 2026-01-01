@@ -85,14 +85,6 @@ const CVAnalysis = ({ cvData, onAnalysisComplete }) => {
               <span className="item-icon">💻</span>
               <span>Skills Detection</span>
             </div>
-            <div className={`preview-item ${analysisProgress > 60 ? 'completed' : ''}`}>
-              <span className="item-icon">💼</span>
-              <span>Experience Analysis</span>
-            </div>
-            <div className={`preview-item ${analysisProgress > 80 ? 'completed' : ''}`}>
-              <span className="item-icon">🎓</span>
-              <span>Education Verification</span>
-            </div>
             <div className={`preview-item ${analysisProgress > 95 ? 'completed' : ''}`}>
               <span className="item-icon">📊</span>
               <span>Score Calculation</span>

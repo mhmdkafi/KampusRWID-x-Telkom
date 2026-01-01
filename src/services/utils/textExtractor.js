@@ -1,79 +1,54 @@
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+import pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js";
+
+// ✅ INI PENTING
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
 class TextExtractor {
-    async extractFromFile(file) {
-      const fileType = file.type;
-      
-      try {
-        if (fileType === 'application/pdf') {
-          return await this.extractFromPDF(file);
-        } else if (fileType.includes('word')) {
-          return await this.extractFromWord(file);
-        } else {
-          throw new Error('Unsupported file type');
-        }
-      } catch (error) {
-        console.error('Text extraction error:', error);
-        // Fallback: return dummy text for demo
-        return this.getDummyText();
+  async extractFromPDF(file) {
+    try {
+      console.log("📄 Starting PDF text extraction...");
+
+      const arrayBuffer = await file.arrayBuffer();
+
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+      });
+
+      const pdf = await loadingTask.promise;
+      console.log(`📊 PDF loaded: ${pdf.numPages} pages`);
+
+      let fullText = "";
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+
+        const pageText = textContent.items
+          .map(item => item.str)
+          .join(" ");
+
+        fullText += pageText + "\n\n";
       }
-    }
-  
-    async extractFromPDF(file) {
-      // For demo purposes, we'll simulate PDF extraction
-      // In real implementation, you'd use libraries like pdf-parse or PDF.js
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(this.getDummyText());
-        }, 1000);
-      });
-    }
-  
-    async extractFromWord(file) {
-      // For demo purposes, we'll simulate Word extraction
-      // In real implementation, you'd use libraries like mammoth.js
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(this.getDummyText());
-        }, 1000);
-      });
-    }
-  
-    getDummyText() {
-      // Dummy CV text for demonstration
-      return `
-        John Doe
-        Software Developer
-        
-        EXPERIENCE
-        2021 - Present: Senior Frontend Developer at Tech Company
-        - Developed web applications using React, JavaScript, and TypeScript
-        - Collaborated with backend team using Node.js and MongoDB
-        - Implemented responsive designs using CSS and Bootstrap
-        
-        2019 - 2021: Junior Web Developer at StartupCorp
-        - Built user interfaces with HTML, CSS, and JavaScript
-        - Worked with PHP and MySQL for backend development
-        - Used Git for version control and team collaboration
-        
-        EDUCATION
-        2019: Bachelor of Computer Science
-        University of Technology
-        
-        SKILLS
-        Programming Languages: JavaScript, TypeScript, Python, PHP
-        Frontend: React, Vue.js, HTML5, CSS3, Bootstrap, Tailwind CSS
-        Backend: Node.js, Express.js, Laravel
-        Database: MySQL, MongoDB, PostgreSQL
-        Tools: Git, Docker, VS Code, Figma
-        
-        CERTIFICATIONS
-        - AWS Certified Developer Associate
-        - Google Analytics Certified
-        
-        LANGUAGES
-        - English (Fluent)
-        - Indonesian (Native)
-      `;
+
+      if (fullText.trim().length < 50) {
+        console.warn("⚠️ PDF kemungkinan hasil scan (tidak ada text layer)");
+      }
+
+      return fullText.trim();
+    } catch (err) {
+      console.error("❌ PDF extraction error:", err);
+      throw new Error(`Failed to extract text from PDF: ${err.message}`);
     }
   }
-  
-  export const textExtractor = new TextExtractor();
+
+  isPDF(file) {
+    return file?.type === "application/pdf";
+  }
+
+  isValidSize(file, maxMB = 5) {
+    return file && file.size <= maxMB * 1024 * 1024;
+  }
+}
+
+export const textExtractor = new TextExtractor();

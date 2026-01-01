@@ -87,7 +87,11 @@ const JobMatching = () => {
 
       console.log("📄 Analyzing CV...");
       const analysis = await cvAnalyzer.analyzeCV(file);
-      console.log("✅ CV Analysis Complete:", analysis);
+      console.log("✅ CV Analysis Complete:", {
+        cvType: analysis.cvType,
+        skills: analysis.skillsFound?.length,
+      });
+
 
       setAnalysisResults(analysis);
       
@@ -235,15 +239,6 @@ const JobMatching = () => {
                     style={{ color: "#22543d", fontSize: "1rem" }}
                   >
                     {analysisResults.skillsFound?.length || 0} skills
-                  </span>
-                </div>
-                <div className="col-md-6">
-                  <small className="text-muted d-block">Experience</small>
-                  <span
-                    className="fw-bold"
-                    style={{ color: "#22543d", fontSize: "1rem" }}
-                  >
-                    {analysisResults.experienceLevel || "Fresh Graduate"}
                   </span>
                 </div>
               </div>
