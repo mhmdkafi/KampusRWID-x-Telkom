@@ -277,119 +277,67 @@ const JobMatching = () => {
             {matchResults.map((job, index) => (
               <div
                 key={index}
-                className="job-match-card card mb-3 shadow-sm"
-                style={{
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  transition: "all 0.3s ease",
-                }}
+                className="job-match-card"
               >
-                <div className="card-body p-4">
-                  <div className="row align-items-center">
-                    {/* Match Score Circle */}
-                    <div className="col-auto">
-                      <div
-                        className="score-circle"
-                        style={{
-                          width: "120px",
-                          height: "120px",
-                          borderRadius: "50%",
-                          background: `conic-gradient(#22543d ${
-                            job.matchScore * 3.6
-                          }deg, #e2e8f0 0deg)`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          position: "relative",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "100px",
-                            height: "100px",
-                            borderRadius: "50%",
-                            background: "white",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexDirection: "column",
-                          }}
-                        >
-                          <span
-                            className="fw-bold"
-                            style={{ color: "#22543d", fontSize: "2.5rem" }}
-                          >
-                            {job.matchScore}%
-                          </span>
-                          <small
-                            style={{ fontSize: "0.9rem", color: "#64748b" }}
-                          >
-                            match
-                          </small>
-                        </div>
-                      </div>
-                      <div className="text-center mt-2">
-                        <span
-                          className="badge bg-secondary"
-                          style={{ fontSize: "0.8rem" }}
-                        >
-                          #{index + 1}
+                {/* Match Score Circle */}
+                <div className="match-score-section">
+                  <div className="score-circle-wrapper">
+                    <div
+                      className="score-circle"
+                      style={{
+                        background: `conic-gradient(#22543d ${
+                          job.matchScore * 3.6
+                        }deg, #e2e8f0 0deg)`,
+                      }}
+                    >
+                      <div className="score-inner">
+                        <span className="score-percentage">
+                          {job.matchScore}%
                         </span>
-                      </div>
-                    </div>
-
-                    {/* Job Info */}
-                    <div className="col">
-                      <h5 className="fw-bold mb-2" style={{ color: "#1a202c" }}>
-                        {job.title}
-                      </h5>
-                      <div className="text-muted small mb-2">
-                        <span className="me-3">🏢 {job.company}</span>
-                        <span>📍 {job.location}</span>
-                      </div>
-
-                      {/* Match Reasons */}
-                      <div className="match-reasons">
-                        <h6
-                          className="small fw-bold mb-2"
-                          style={{ color: "#22543d" }}
-                        >
-                          Why this matches:
-                        </h6>
-                        <ul className="list-unstyled small mb-0">
-                          {job.matchReasons &&
-                            job.matchReasons.map((reason, idx) => (
-                              <li
-                                key={idx}
-                                className="mb-1"
-                                style={{ color: "#4a5568" }}
-                              >
-                                <span style={{ color: "#22543d" }}>✓</span>{" "}
-                                {reason}
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-
-                      {/* Job Actions */}
-                      <div className="job-actions mt-3">
-                        <button
-                          onClick={() => handleViewJobDetails(job)}
-                          className="btn btn-sm"
-                          style={{
-                            background: "#22543d",
-                            color: "white",
-                            border: "none",
-                            padding: "0.5rem 1.5rem",
-                            borderRadius: "6px",
-                            fontWeight: "600",
-                          }}
-                        >
-                          View Details
-                        </button>
+                        <small className="score-label">match</small>
                       </div>
                     </div>
                   </div>
+                  <div className="rank-badge">
+                    #{index + 1}
+                  </div>
+                </div>
+
+                {/* Job Info */}
+                <div className="job-info-section">
+                  <h5 className="job-title">
+                    {job.title}
+                  </h5>
+                  <div className="job-meta">
+                    <span className="company">🏢 {job.company}</span>
+                    <span className="location">📍 {job.location}</span>
+                  </div>
+
+                  {/* Match Reasons */}
+                  <div className="match-reasons">
+                    <h6 className="reasons-title">
+                      Why this matches:
+                    </h6>
+                    <ul className="reasons-list">
+                      {job.matchReasons &&
+                        job.matchReasons.map((reason, idx) => (
+                          <li key={idx}>
+                            <span className="check-icon">✓</span>{" "}
+                            {reason}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Job Actions */}
+                <div className="job-actions-section">
+                  <button
+                    onClick={() => handleViewJobDetails(job)}
+                    className="btn-view-details"
+                  >
+                    View Details
+                  </button>
                 </div>
               </div>
             ))}
