@@ -1,13 +1,6 @@
 class MatchCalculator {
   constructor() {
-    // Enhanced matching weights for 80%+ accuracy
-    this.weights = {
-      cvType: 55, // CV type match importance
-      skills: 35, // Skills match importance
-      keywords: 10, // Keyword match bonus
-    };
-
-    // Enhanced CV type to job category mapping for better accuracy
+    // Mapping CV Type ke Job Categories (untuk context saja, bukan scoring)
     this.cvTypeMapping = {
       technical: [
         "developer",
@@ -50,18 +43,17 @@ class MatchCalculator {
     };
   }
 
-  // ENHANCED MAIN MATCHING FUNCTION - Optimized for 80%+ accuracy
+  // MAIN MATCHING FUNCTION
   calculateMatches(cvAnalysis, jobsList) {
     if (!cvAnalysis || !jobsList || jobsList.length === 0) {
       console.warn("⚠️ Invalid input for matching");
       return [];
     }
 
-    console.log("🎯 Starting job matching with enhanced algorithm...");
+    console.log("🎯 Starting job matching with transparent algorithm...");
     console.log("📊 CV Analysis:", {
       type: cvAnalysis.cvType,
       skills: cvAnalysis.skillsFound?.length || 0,
-      experience: cvAnalysis.experienceLevel,
     });
 
     const matches = jobsList.map((job) => {
@@ -89,113 +81,94 @@ class MatchCalculator {
     return sortedMatches;
   }
 
-  // Enhanced job match calculation with optimized scoring
+  // PERBAIKAN TOTAL - HAPUS SEMUA WEIGHTING, HANYA SKILL MATCH SAJA
   calculateJobMatch(cvAnalysis, job) {
-    // Calculate individual scores
-    const typeScore = this.calculateTypeMatch(cvAnalysis.cvType, job.title);
-    const skillsScore = this.calculateSkillsMatch(cvAnalysis, job);
-    const keywordScore = this.calculateKeywordMatch(cvAnalysis, job);
+    const cvSkills = (cvAnalysis.skillsFound || []).map((s) => s.toLowerCase());
+    const jobSkills = (job.skills || []).map((s) => s.toLowerCase());
 
-    // Weighted final score
-    const finalScore =
-      (typeScore * this.weights.cvType +
-        skillsScore * this.weights.skills +
-        keywordScore * this.weights.keywords) /
-      100;
+    console.log(`📋 Matching "${job.title}"`);
+    console.log(`   CV Skills (${cvSkills.length}):`, cvSkills);
+    console.log(`   Job Skills (${jobSkills.length}):`, jobSkills);
 
-    // Generate detailed reasons
+    // LANGKAH 1: Cari matching skills
+    let matchingSkillsList = [];
+    if (jobSkills.length > 0) {
+      matchingSkillsList = cvSkills.filter((cvSkill) =>
+        jobSkills.some((jobSkill) => this.areSimilarSkills(cvSkill, jobSkill))
+      );
+    }
+
+    console.log(
+      `   Matching Skills (${matchingSkillsList.length}):`,
+      matchingSkillsList
+    );
+
+    // LANGKAH 2: HITUNG SCORE - HANYA DARI SKILL MATCH, TIDAK ADA YANG LAIN
+    let finalScore = 0;
+    if (jobSkills.length === 0) {
+      finalScore = 0;
+    } else {
+      // Score = (matching / required) * 100, max 100%
+      finalScore = (matchingSkillsList.length / jobSkills.length) * 100;
+      finalScore = Math.min(finalScore, 100);
+    }
+
+    console.log(`   📊 FINAL SCORE: ${finalScore}%`);
+
+    // LANGKAH 3: Generate reasons yang SESUAI dengan score
     const reasons = this.generateDetailedMatchReasons(
       cvAnalysis,
       job,
-      finalScore
+      matchingSkillsList,
+      jobSkills
     );
 
     return {
-      score: finalScore,
+      score: finalScore, // Ini adalah source of truth
       reasons,
       breakdown: {
-        typeScore,
-        skillsScore,
-        keywordScore,
+        skillMatchPercentage: finalScore,
+        matchingSkillsCount: matchingSkillsList.length,
+        requiredSkillsCount: jobSkills.length,
+        matchingSkills: matchingSkillsList,
       },
     };
   }
 
-  // CRITICAL FIX: Enhanced CV Type Matching with Relaxed Criteria
-  calculateTypeMatch(cvType, jobTitle) {
-    if (!cvType || !jobTitle) return 50;
-
-    const jobTitleLower = jobTitle.toLowerCase();
-    const cvTypeLower = cvType.toLowerCase();
-
-    // Direct match
-    if (jobTitleLower.includes(cvTypeLower)) return 100;
-
-    // Check category mapping
-    const categoryMatch = this.getCategoryFallbackScore(cvType, jobTitle);
-    if (categoryMatch > 0) return categoryMatch;
-
-    return 50; // Default fallback
-  }
-
-  // NEW: Category fallback scoring untuk improve accuracy
-  getCategoryFallbackScore(cvType, jobTitle) {
-    const jobTitleLower = jobTitle.toLowerCase();
-    const cvTypeLower = cvType.toLowerCase();
-
-    // Ubah: hapus 'category' karena tidak dipakai
-    for (const keywords of Object.values(this.cvTypeMapping)) {
-      const cvMatchesCategory = keywords.some((kw) => cvTypeLower.includes(kw));
-      const jobMatchesCategory = keywords.some((kw) =>
-        jobTitleLower.includes(kw)
-      );
-
-      if (cvMatchesCategory && jobMatchesCategory) {
-        return 85; // Good category match
-      }
-    }
-
-    return 0;
-  }
-
-  // RELAXED: Enhanced skills matching with synonyms and related skills
-  calculateSkillsMatch(cvAnalysis, job) {
-    const cvSkills = (cvAnalysis.skillsFound || []).map((s) => s.toLowerCase());
-    const jobSkills = (job.skills || []).map((s) => s.toLowerCase());
-
-    if (jobSkills.length === 0) return 70; // No specific skills required
-
-    let matchCount = 0;
-    jobSkills.forEach((jobSkill) => {
-      const hasMatch = cvSkills.some((cvSkill) =>
-        this.areSimilarSkills(cvSkill, jobSkill)
-      );
-      if (hasMatch) matchCount++;
-    });
-
-    const matchPercentage = (matchCount / jobSkills.length) * 100;
-    return Math.min(matchPercentage, 100);
-  }
-
-  // ENHANCED: Better skill similarity detection
+  // Better skill similarity detection
   areSimilarSkills(skill1, skill2) {
+    // Exact match saja
     if (skill1 === skill2) return true;
+
+    // Substring match - tapi jangan untuk kategori umum
+    // Hanya boleh jika keyword lebih spesifik
     if (skill1.includes(skill2) || skill2.includes(skill1)) return true;
 
-    // Skill synonyms mapping
+    // Synonym mapping - HANYA untuk true synonyms, bukan kategori
     const synonyms = {
-      javascript: ["js", "node", "react", "vue", "angular"],
-      python: ["py", "django", "flask"],
-      database: ["sql", "mysql", "postgresql", "mongodb"],
-      cloud: ["aws", "azure", "gcp", "google cloud"],
-      frontend: ["react", "vue", "angular", "html", "css"],
-      backend: ["node", "express", "fastify", "api"],
+      // Bahasa pemrograman
+      javascript: ["js"],
+      typescript: ["ts"],
+      cpp: ["c++"],
+      csharp: ["c#"],
+
+      // Framework & library
+      reactjs: ["react", "react.js"],
+      vuejs: ["vue", "vue.js"],
+      nextjs: ["next", "next.js"],
+      "node.js": ["node", "nodejs"],
+      "spring boot": ["springboot", "spring"],
+
+      // API & protocol
+      "rest api": ["rest", "restful", "restful api"],
+
+      // Hanya EXACT skills, bukan kategori abstrak
     };
 
     for (const [main, syns] of Object.entries(synonyms)) {
       if (
-        (skill1.includes(main) || syns.some((s) => skill1.includes(s))) &&
-        (skill2.includes(main) || syns.some((s) => skill2.includes(s)))
+        (skill1 === main || syns.includes(skill1)) &&
+        (skill2 === main || syns.includes(skill2))
       ) {
         return true;
       }
@@ -204,49 +177,77 @@ class MatchCalculator {
     return false;
   }
 
-  // Enhanced keyword matching
-  calculateKeywordMatch(cvAnalysis, job) {
-    const cvText = `${cvAnalysis.cvType} ${cvAnalysis.skillsFound?.join(" ")} ${
-      cvAnalysis.summary || ""
-    }`.toLowerCase();
-    const jobText = `${job.title} ${job.description || ""} ${
-      job.requirements?.join(" ") || ""
-    }`.toLowerCase();
-
-    const keywords = jobText.split(/\s+/).filter((w) => w.length > 3);
-    const matchingKeywords = keywords.filter((kw) => cvText.includes(kw));
-
-    if (keywords.length === 0) return 50;
-    return (matchingKeywords.length / keywords.length) * 100;
-  }
-
-  // Enhanced detailed reasoning generation
-  generateDetailedMatchReasons(cvAnalysis, job) {
+  // Generate detailed reasoning berdasarkan data KONKRET
+  generateDetailedMatchReasons(cvAnalysis, job, matchingSkills, jobSkills) {
     const reasons = [];
 
-    // Skills match
-    const matchingSkills = this.getMatchingSkills(cvAnalysis, job);
-    if (matchingSkills.length > 0) {
+    // LANGSUNG GUNAKAN matchingSkills yang sudah correct dari calculateJobMatch
+    if (matchingSkills.length > 0 && jobSkills.length > 0) {
+      // Hitung persentase dari matchingSkills langsung
+      const skillPercentage = Math.min(
+        Math.round((matchingSkills.length / jobSkills.length) * 100),
+        100
+      );
+
       reasons.push(
-        `Memiliki ${matchingSkills.length} skill yang sesuai: ${matchingSkills
-          .slice(0, 3)
-          .join(", ")}`
+        `Memiliki ${matchingSkills.length} dari ${
+          jobSkills.length
+        } skill yang dibutuhkan (${skillPercentage}%): ${matchingSkills.join(
+          ", "
+        )}`
+      );
+    } else if (jobSkills.length === 0) {
+      // Job tidak punya skill requirement
+      reasons.push(`Job tidak memiliki persyaratan skill khusus`);
+    } else {
+      // Tidak ada skill match
+      reasons.push(
+        `Tidak ada skill Anda yang sesuai dengan persyaratan (0% match)`
       );
     }
 
-    // CV type match
-    reasons.push(`Latar belakang ${cvAnalysis.cvType} relevan dengan posisi`);
+    // CV Type hanya untuk konteks tambahan, BUKAN untuk score
+    if (cvAnalysis.cvType && this.isCVTypeRelevant(cvAnalysis.cvType, job)) {
+      reasons.push(
+        `Catatan: Background ${cvAnalysis.cvType} mungkin relevan dengan posisi ini`
+      );
+    }
 
     return reasons;
   }
 
-  getMatchingSkills(cvAnalysis, job) {
+  // Helper: Check apakah CV Type relevant dengan job
+  isCVTypeRelevant(cvType, job) {
+    const jobTitleLower = job.title.toLowerCase();
+
+    for (const keywords of Object.values(this.cvTypeMapping)) {
+      const cvMatchesCategory = keywords.some((kw) =>
+        cvType.toLowerCase().includes(kw)
+      );
+      const jobMatchesCategory = keywords.some((kw) =>
+        jobTitleLower.includes(kw)
+      );
+
+      if (cvMatchesCategory && jobMatchesCategory) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Helper: Get matching skills
+  getMatchingSkillsFromCV(cvAnalysis, job) {
     const cvSkills = (cvAnalysis.skillsFound || []).map((s) => s.toLowerCase());
     const jobSkills = (job.skills || []).map((s) => s.toLowerCase());
 
-    return jobSkills.filter((jobSkill) =>
-      cvSkills.some((cvSkill) => this.areSimilarSkills(cvSkill, jobSkill))
+    return cvSkills.filter((cvSkill) =>
+      jobSkills.some((jobSkill) => this.areSimilarSkills(cvSkill, jobSkill))
     );
+  }
+
+  getMatchingSkills(cvAnalysis, job) {
+    return this.getMatchingSkillsFromCV(cvAnalysis, job);
   }
 }
 

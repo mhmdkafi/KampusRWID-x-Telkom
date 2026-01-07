@@ -41,8 +41,8 @@ async function getAuthToken() {
 
 // Jobs API
 export async function getJobs(userId = null) {
-  let url = `${API_BASE_URL}/jobs?limit=20`;
-  
+  let url = `${API_BASE_URL}/jobs?limit=1000`;
+
   if (userId) {
     url += `&user_id=${userId}`;
   }

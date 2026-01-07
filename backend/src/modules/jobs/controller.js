@@ -3,7 +3,7 @@ import { JobsService } from "./service.js";
 const jobsService = new JobsService();
 
 export const getJobs = async (request, reply) => {
-  const { user_id, limit = 10, offset = 0 } = request.query;
+  const { user_id, limit = 1000, offset = 0 } = request.query;
 
   try {
     const jobs = await jobsService.listJobs({
